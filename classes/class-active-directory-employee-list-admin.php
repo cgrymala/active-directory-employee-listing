@@ -3,7 +3,7 @@
  * Administration functions and class definition for the Active Directory Employee List plugin
  * @package Active-Directory-Employee-List
  * @subpackage Administration
- * @version 0.1a
+ * @version 0.3
  */
 
 if( !class_exists( 'active_directory_employee_list' ) )
@@ -176,6 +176,9 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 		 * @uses is_network_admin()
 		 */
 		protected function _set_options( $opt ) {
+			if( !wp_verify_nonce( $_REQUEST['_wpnonce'], $this->settings_page . '-options' ) )
+				return false;
+			
 			$output = array();
 			if( is_network_admin() ) {
 				$output[$this->settings_name] 	= $this->_set_options_network( $this->settings_name, 	$opt[$this->settings_name] 	);
@@ -389,23 +392,12 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 		 */
 		function _sanitize_options( $input ) {
 			$this->_get_options();
-			/*var_dump( $input ); die(); exit;*/
 			
 			if( isset( $input['ignore_settings_group'] ) ) {
-				/*die( 'We found the ignore setting was checked for settings, so options would have been deleted.' );*/
-				/*if( is_network_admin() ) {
-					delete_site_option( $this->settings_name );
-				} else {
-					delete_option( $this->settings_name );
-				}*/
 				$this->_sanitized = true;
 				return false;
 			}
-			print( "\n<!-- The unsanitized opts look like:\n" );
-			var_dump( $input );
-			print( "\n and the AD password is: \n" );
-			var_dump( $this->_ad_password );
-			print( "\n-->\n" );
+			$this->_log( "\n<!-- The unsanitized opts look like:\n", $input, "\n and the AD password is: \n", $this->_ad_password, "\n-->\n" );
 			
 			if( $this->_sanitized )
 				return $opts;
@@ -414,8 +406,8 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 			
 			$output['_domain_controllers']	= explode( ';', str_replace( ' ', '', $input['_domain_controllers'] ) );
 			$output['_base_dn'] 			= $input['_base_dn'];
-			$output['_use_ssl'] 			= '1' === $input['_use_ssl'] ? true : false;
-			$output['_use_tls']				= '1' === $input['_use_tls'] ? true : false;
+			$output['_use_ssl'] 			= isset( $input['_use_ssl'] ) ? true : false;
+			$output['_use_tls']				= isset( $input['_use_tls'] ) ? true : false;
 			$output['_ad_port']				= empty( $input['_ad_port'] ) ? 389 : $input['_ad_port'];
 			$output['_ad_username'] 		= $input['_ad_username'];
 			$output['_ad_password'] 		= base64_encode( $this->_ad_password ) == $input['_ad_password'] ? $input['_ad_password'] : base64_encode( $input['_ad_password'] );
@@ -432,29 +424,14 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 		 * Clean up any preference settings that need to be sanitized before saving
 		 */
 		function _sanitize_prefs( $input ) {
-			/*var_dump( $input ); die(); exit;*/
-			
 			if( isset( $input['ignore_prefs_group'] ) ) {
-				/*die( 'We found the ignore setting was checked for preferences, so options would have been deleted.' );*/
-				/*if( is_network_admin() ) {
-					delete_site_option( $this->prefs_name );
-				} else {
-					delete_option( $this->prefs_name );
-				}*/
 				return false;
 			}
-			/*print( "\n<!-- The unsanitized prefs look like:\n" );
-			var_dump( $input );
-			print( "\n-->\n" );*/
 			
 			$output = array();
 			
 			$output['ad_group']				= empty( $input['ad_group'] ) ? null : $input['ad_group'];
-			$output['fields_to_show']		= empty( $input['fields_to_show'] ) ? null : explode( ';', str_replace( ' ', '', $input['fields_to_show'] ) );
-			
-			/*print( "\n<!-- The sanitized prefs look like:\n" );
-			var_dump( $output );
-			print( "\n-->\n" );*/
+			$output['fields_to_show']		= empty( $input['fields_to_show'] ) ? null : ( is_array( $input['fields_to_show'] ) ? $input['fields_to_show'] : explode( ';', str_replace( ' ', '', $input['fields_to_show'] ) ) );
 			
 			return array_map( 'stripslashes_deep', $output );
 		}
@@ -648,14 +625,33 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 <?php
 				break;
 				case 'select':
+					if( array_key_exists( 'multiple', $field ) && $field['multiple'] ) {
+						$multiple = true;
+						$field['class'] = array_key_exists( 'class', $field ) && !empty( $field['class'] ) ? 
+							$field['class'] . ' multiple' : 
+							'multiple';
+					} else {
+						$multiple = false;
+					}
 ?>
-					<select name="<?php echo $args['section'] ?>[<?php echo $args['label_for'] ?>]" id="<?php echo $args['label_for'] ?>"<?php echo array_key_exists( 'class', $field ) ? ' class="' . $field['class'] . '"' : '' ?>>
+					<select<?php echo $multiple ? ' multiple="multiple"' : '' ?> name="<?php echo $args['section'] ?>[<?php echo $args['label_for'] ?>]<?php echo $multiple ? '[]' : '' ?>" id="<?php echo $args['label_for'] ?>"<?php echo array_key_exists( 'class', $field ) ? ' class="' . $field['class'] . '"' : '' ?>>
+<?php
+					if( !$multiple ) {
+?>
                     	<option<?php selected( $field['default'], $value ) ?>><?php _e( '-- Please select an option --' ) ?></option>
 <?php
-					foreach( $field['options'] as $val=>$lbl ) {
+						foreach( $field['options'] as $val=>$lbl ) {
 ?>
 						<option value="<?php echo $val ?>" title="<?php echo $lbl ?>"<?php selected( $value, $val ) ?>><?php echo $lbl ?></option>
 <?php
+						}
+					} else {
+						foreach( $field['options'] as $val=>$lbl ) {
+							$s = is_array( $value ) && in_array( $val, $value ) ? ' selected="selected"' : '';
+?>
+						<option value="<?php echo $val ?>" title="<?php echo $lbl ?>"<?php echo $s ?>><?php echo $lbl ?></option>
+<?php
+						}
 					}
 ?>
                     </select>
@@ -672,14 +668,25 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 <?php
 			}
 			if( array_key_exists( 'note', $field ) )
-					echo '<div class="note">' . $field['note'] . '</div>';
+				echo '<div class="note">' . $field['note'] . '</div>';
+			if( array_key_exists( 'hidenote', $field ) ) {
+				echo '<p><a href="#hidenote-' . $args['label_for'] . '" class="adel-reveal-if-js">' . __( 'More information', $this->text_domain ) . '</a></p>';
+				echo '<div class="adel-hide-if-js" id="hidenote-' . $args['label_for'] . '">' . $field['hidenote'] . '</div>';
+			}
 		}
 		
 		/**
 		 * Retrieve information about the fields being displayed
 		 */
 		protected function _get_field_details( $field ) {
+			$this->_get_options();
+			
 			if( empty( $this->_settings_fields ) ) {
+				$template_tags = $this->get_template_tags( false );
+				foreach( $template_tags as $k=>$v ) {
+					$template_tags[$k] = $k . ': ' . $v;
+				}
+				
 				$ignore_text = sprintf( __( 'Check this box if you would like the %s settings for this options group to override any settings entered here.', $this->text_domain ), ( is_network_admin() ? 'multi-network' : 'network' ) );
 				$this->_settings_fields = array(
 					'ignore_settings_group' => array(
@@ -709,12 +716,12 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 					'_use_ssl'				=> array( 
 						'note' 		=> __( 'Bind to the LDAP server using an secure socket layer (SSL) connection. When using SSL, a port of 636 will always be used, no matter what is specified in the "port" setting below.', $this->text_domain ), 
 						'type' 		=> 'checkbox', 
-						'default'	=> !$this->_use_ssl,
+						'default'	=> true,
 					),
 					'_use_tls'				=> array( 
 						'note' 		=> __( 'Secure the connection between the WordPress and the Active Directory Servers using <strong>TLS</strong> after the bind occurs.', $this->text_domain ), 
 						'type' 		=> 'checkbox', 
-						'default'	=> !$this->_use_tls,
+						'default'	=> true,
 					),
 					'_ad_port'				=> array( 
 						'note' 		=> __( 'Defaults to 389', $this->text_domain ), 
@@ -736,8 +743,11 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 					/* List Preferences */
 					'ad_group'				=> $this->get_ad_group_field_details(),
 					'fields_to_show'		=> array(
-						'default'	=> 'displayname;mail;telephonenumber;department',
-						'note'		=> __( 'Please separate multiple fields with a semi-colon.', $this->text_domain ), 
+						'default'	=> array( 'displayname', 'givenname', 'cn', 'mail', 'telephonenumber', 'department' ),
+						'type'		=> 'select',
+						'options'	=> $template_tags,
+						'multiple'	=> true,
+						'class'		=> 'widefat',
 					),
 					/* Output options */
 					'before_list'			=> array(
@@ -803,6 +813,7 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 						'note'		=> __( 'Please indicate how you would like the information for each individual employee to be output within its list item wrapper. If this is left blank, the employee\'s information will simply be wrapped in a <code>&lt;ul&gt;</code> element with each field retrieved from the database being wrapped in <code>&lt;li&gt;</code> elements.', $this->text_domain ), 
 						'type'		=> 'textarea', 
 						'class'		=> 'large-text',
+						'hidenote'	=> $this->get_output_builder_instructions(),
 					),
 				);
 			}

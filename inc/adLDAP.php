@@ -1,10 +1,9 @@
 <?php
 /**
  * PHP LDAP CLASS FOR MANIPULATING ACTIVE DIRECTORY 
- * Version 3.3.2 EXTENDED 
+ * Version 3.3.2
  * 
  * PHP Version 5 with SSL and LDAP support
- * 
  * 
  * Written by Scott Barnett, Richard Hyland
  *   email: scott@wiggumworld.com, adldap@richardhyland.com
@@ -14,11 +13,6 @@
  * 
  * We'd appreciate any improvements or additions to be submitted back
  * to benefit the entire community :)
- * 
- * EXTENDED with the ability to change the port and recursive_groups bug fix
- *  by Christoph Steindorff, ECW GmbH
- *   email: cst@ecw.de
- *   http://www.ecw.de
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -36,7 +30,7 @@
  * @copyright (c) 2006-2010 Scott Barnett, Richard Hyland
  * @license http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html LGPLv2.1
  * @revision $Revision: 91 $
- * @version 3.3.2 EXTENDED (201102221155)
+ * @version 3.3.2
  * @link http://adldap.sourceforge.net/
  */
 
@@ -132,32 +126,6 @@ class adLDAP {
     * @var bool
     */
 	protected $_recursive_groups=true;
-	
-	/**
-	* If your not using the standard port 389, you can change it by the options.
-	*
-	* @var int
-	*/
-	protected $_ad_port=389;
-	
-	/**
-	 * If we have PHP 5.3 or above we can set the LDAP_OPT_NETWORK_TIMEOUT to another value
-	 * Default is -1 which means infinite
-	 * (EXTENDED)
-	 * @var integer
-	 */
-	protected $_network_timeout = -1;
-
-	
-	protected $_last_used_dc = '';
-	
-	/**
-	 * Version info
-	 *
-	 * @var unknown_type
-	 */
-	const VERSION = '3.3.2 Extended (201104081456)';
-	
 	
 	// You should not need to edit anything below this line
 	//******************************************************************************************
@@ -342,32 +310,6 @@ class adLDAP {
     {
           return $this->_recursive_groups;
     }
-    
-    /**
-    * Set network timeout
-    * 
-    * @param integer $_seconds
-    */
-    public function set_network_timeout($_seconds)
-    {
-          $this->_network_timeout = (int)$_seconds;
-    }
-    
-    /**
-    * Get network timeout
-    * 
-    * @return integer
-    */
-    public function get_network_timeout()
-    {
-          return $this->_network_timeout;
-    }
-    
-    public function get_last_used_dc()
-    {
-    	return $this->_last_used_dc;	
-    }
-
 
     /**
     * Default Constructor
@@ -390,8 +332,6 @@ class adLDAP {
             if (array_key_exists("use_ssl",$options)){ $this->_use_ssl=$options["use_ssl"]; }
             if (array_key_exists("use_tls",$options)){ $this->_use_tls=$options["use_tls"]; }
             if (array_key_exists("recursive_groups",$options)){ $this->_recursive_groups=$options["recursive_groups"]; }
-			if (array_key_exists("ad_port",$options)){ $this->_ad_port=$options["ad_port"]; }
-        	if (array_key_exists("network_timeout",$options)){ $this->_network_timeout=$options["network_timeout"]; }
         }
         
         if ($this->ldap_supported() === false) {
@@ -416,26 +356,17 @@ class adLDAP {
     * @return bool
     */
     public function connect() {
-
-    	ldap_set_option($this->_conn, LDAP_OPT_PROTOCOL_VERSION, 3);
-    	
         // Connect to the AD/LDAP server as the username/password
-        $this->_last_used_dc = $this->random_controller();
-        
-        if ($this->_use_ssl) {
-            $this->_conn = ldap_connect("ldaps://".$this->_last_used_dc, 636);
+        $dc=$this->random_controller();
+        if ($this->_use_ssl){
+            $this->_conn = ldap_connect("ldaps://".$dc, 636);
         } else {
-            $this->_conn = ldap_connect($this->_last_used_dc, $this->_ad_port);
+            $this->_conn = ldap_connect($dc);
         }
                
         // Set some ldap options for talking to AD
         ldap_set_option($this->_conn, LDAP_OPT_PROTOCOL_VERSION, 3);
         ldap_set_option($this->_conn, LDAP_OPT_REFERRALS, 0);
-        
-    	// if we have PHP 5.3 or above set LDAP_OPT_NETWORK_TIMEOUT (EXTENDED)
-    	if (($this->_network_timeout > 0) && (version_compare(PHP_VERSION, '5.3.0', '>='))) {
-    		ldap_set_option($this->_conn, LDAP_OPT_NETWORK_TIMEOUT, $this->_network_timeout);
-		}
         
         if ($this->_use_tls) {
             ldap_start_tls($this->_conn);
@@ -443,7 +374,7 @@ class adLDAP {
                
         // Bind as a domain admin if they've set it up
         if ($this->_ad_username!=NULL && $this->_ad_password!=NULL){
-            $this->_bind = @ldap_bind($this->_conn,$this->_ad_username,$this->_ad_password);
+            $this->_bind = @ldap_bind($this->_conn,$this->_ad_username.$this->_account_suffix,$this->_ad_password);
             if (!$this->_bind){
                 if ($this->_use_ssl && !$this->_use_tls){
                     // If you have problems troubleshooting, remove the @ character from the ldap_bind command above to get the actual error message
@@ -488,9 +419,9 @@ class adLDAP {
         $this->_bind = @ldap_bind($this->_conn, $username . $this->_account_suffix, $password);
         if (!$this->_bind){ $ret = false; }
         
-        // Once we've checked their details, kick back into admin mode if we have it
+        // Cnce we've checked their details, kick back into admin mode if we have it
         if ($this->_ad_username !== NULL && !$prevent_rebind) {
-            $this->_bind = @ldap_bind($this->_conn, $this->_ad_username, $this->_ad_password);
+            $this->_bind = @ldap_bind($this->_conn, $this->_ad_username . $this->_account_suffix , $this->_ad_password);
             if (!$this->_bind){
                 // This should never happen in theory
                 throw new adLDAPException('Rebind to Active Directory failed. AD said: ' . $this->get_last_error());
@@ -740,65 +671,6 @@ class adLDAP {
     }
     
     /**
-     * Get group members by primaryGroupID
-     * Use this to get all users of for example "Domain Users"
-     * @param integer $pgid
-     * @param array $fields
-     */
-    public function group_members_by_primarygroupid($pgid= NULL, $fields = NULL)
-    {
-    	if (!$this->_bind){ return (false); }
-    	
-    	if ($pgid===NULL){ return (false); }
-        
-        
-        $filter="(&(objectCategory=user)(primarygroupid=".$pgid."))";
-        $sr=ldap_search($this->_conn,$this->_base_dn,$filter,array('dn'));
-        $users = ldap_get_entries($this->_conn, $sr);
-        
-        if (!is_array($users)) {
-            return (false);   
-        }
-        
-        $user_array=array();
-
-        for ($i=0; $i<$users["count"]; $i++){
-             $filter="(&(objectCategory=person)(distinguishedName=".$this->ldap_slashes($users[$i]['dn'])."))";
-             $fields = array("samaccountname", "distinguishedname", "objectClass");
-             $sr=ldap_search($this->_conn,$this->_base_dn,$filter,$fields);
-             $entries = ldap_get_entries($this->_conn, $sr);
-
-             // not a person, look for a group  
-             if ($entries['count'] == 0 && $recursive == true) {  
-                $filter="(&(objectCategory=group)(distinguishedName=".$this->ldap_slashes($users[$i]['dn'])."))";  
-                $fields = array("samaccountname");  
-                $sr=ldap_search($this->_conn,$this->_base_dn,$filter,$fields);  
-                $entries = ldap_get_entries($this->_conn, $sr);  
-                if (!isset($entries[0]['samaccountname'][0])) {
-                    continue;  
-                }
-                
-                $sub_users = $this->group_members($entries[0]['samaccountname'][0], $recursive);  
-                if (is_array($sub_users)) {
-                    $user_array = array_merge($user_array, $sub_users); 
-                    $user_array = array_unique($user_array);  
-                }
-                continue;  
-             } 
-             
-             if ($entries[0]['samaccountname'][0] === NULL && $entries[0]['distinguishedname'][0] !== NULL) {
-                 $user_array[] = $entries[0]['distinguishedname'][0];
-             }
-             elseif ($entries[0]['samaccountname'][0] !== NULL) {
-                $user_array[] = $entries[0]['samaccountname'][0];
-             }
-        }
-        return ($user_array);
-    }
-            	
-    	
-    
-    /**
     * Return a list of members in a group
     * 
     * @param string $group The group to query
@@ -807,15 +679,10 @@ class adLDAP {
     */
     public function group_members($group, $recursive = NULL){
         if (!$this->_bind){ return (false); }
-        
         if ($recursive===NULL){ $recursive=$this->_recursive_groups; } // Use the default option if they haven't set it 
         // Search the directory for the members of a group
         $info=$this->group_info($group,array("member","cn"));
-        if (isset($info[0]["member"])) {
-        	$users=$info[0]["member"];
-        } else {
-        	return false;
-        }
+        $users=$info[0]["member"];
         if (!is_array($users)) {
             return (false);   
         }
@@ -886,9 +753,7 @@ class adLDAP {
     * @param string $group The group to get the list from
     * @return array
     */
-    /*
     public function recursive_groups($group){
-    	
         if ($group===NULL){ return (false); }
 
         $ret_groups=array();          
@@ -909,41 +774,7 @@ class adLDAP {
         }
 
         return ($ret_groups);
-    }*/
-    
-    // BUG FIX: iterative version
-    public function recursive_groups($group) {
-
-    	if ($group===NULL){ return (false); }
-
-	    $ret_groups=array();
-	    $groups_tocheck=array();
-	    $groups_tocheck[]=$group;
-
-	    while (count($groups_tocheck) > 0) {
-	    	$item=array_pop($groups_tocheck);
-	
-			$ret_groups[] = $item;
-	    	
-			$newgroups=$this->group_info($item,array("memberof"));
-	
-			if (isset($newgroups[0]["memberof"])) {
-		      	if (is_array($newgroups[0]["memberof"])) {
-		        	$newgroups=$newgroups[0]["memberof"];
-		        	if ($newgroups) {
-		          		$newgroup_names=$this->nice_names($newgroups);
-		
-		          		foreach($newgroup_names as $id => $newgroup) {
-		            		if ((array_search($newgroup,$groups_tocheck)===FALSE) and (array_search($newgroup,$ret_groups)===FALSE))
-		              		$groups_tocheck[]=$newgroup;
-		          		}
-		        	}
-		      	}
-			}
-	    }
-        return $ret_groups;
-	}
-    
+    }
     
     /**
     * Returns a complete list of the groups in AD based on a SAM Account Type  
@@ -1050,11 +881,7 @@ class adLDAP {
         $add=$this->adldap_schema($attributes);
         
         // Additional stuff only used for adding accounts
-        if (isset($attributes['cn'])) {
-        	$add['cn'][0]=$attributes['cn']; // EXTENDED by CST
-        } else {
-        	$add["cn"][0]=$attributes["display_name"];
-        }
+        $add["cn"][0]=$attributes["display_name"];
         $add["samaccountname"][0]=$attributes["username"];
         $add["objectclass"][0]="top";
         $add["objectclass"][1]="person";
@@ -1117,9 +944,6 @@ class adLDAP {
                 $groups=array_merge($groups,$extra_groups);
             }
         }
-
-        // remove duplicate entries and close gaps
-        $groups = array_values(array_unique($groups));
         
         return ($groups);
     }
@@ -1306,46 +1130,6 @@ class adLDAP {
     }
     
     /**
-    * Modify a user without use of adLDAP schema
-    * 
-    * @param string $username The username to query
-    * @param array $attributes The attributes to modify.  Note if you set the enabled attribute you must not specify any other attributes
-    * @param bool $isGUID Is the username passed a GUID or a samAccountName
-    * @return bool
-    */
-    public function user_modify_without_schema($username,$attributes,$isGUID=false){
-        if ($username===NULL){ return ("Missing compulsory field [username]"); }
-        if (array_key_exists("password",$attributes) && !$this->_use_ssl){ 
-            throw new adLDAPException('SSL must be configured on your webserver and enabled in the class to set passwords.');
-        }
-
-        // Find the dn of the user
-        $user_dn=$this->user_dn($username,$isGUID);
-        if ($user_dn===false){ return (false); }
-        
-        // Translate the update to the LDAP schema                
-        //$mod=$this->adldap_schema($attributes);
-        $mod = $attributes;
-        
-        // Check to see if this is an enabled status update
-        if (!$mod && !array_key_exists("enabled", $attributes)){ return (false); }
-        
-        // Set the account control attribute (only if specified)
-        if (array_key_exists("enabled",$attributes)){
-            if ($attributes["enabled"]){ $control_options=array("NORMAL_ACCOUNT"); }
-            else { $control_options=array("NORMAL_ACCOUNT","ACCOUNTDISABLE"); }
-            $mod["userAccountControl"][0]=$this->account_control($control_options);
-        }
-
-        // Do the update
-        $result=@ldap_modify($this->_conn,$user_dn,$mod);
-        if ($result==false){ return (false); }
-        
-        return (true);
-    }
-    
-    
-    /**
     * Disable a user account
     * 
     * @param string $username The username to disable
@@ -1524,7 +1308,6 @@ class adLDAP {
         // Add the entry
         $result=@ldap_add($this->_conn, "CN=".$add["cn"][0].", ".$container.",".$this->_base_dn, $add);
         if ($result!=true){ return (false); }
-
         
         return (true);
     }  
@@ -2207,17 +1990,6 @@ class adLDAP {
         return @ldap_error($this->_conn);
     }
     
-    
-    public function get_last_errno() {
-        return @ldap_errno($this->_conn);
-    }
-    
-    
-    public function set_ldap_option($option, $value) {
-    	return @ldap_set_option($this->_conn, $option, $value);
-    	
-    }
-    
     /**
     * Detect LDAP support in php
     * 
@@ -2315,7 +2087,7 @@ class adLDAP {
     * Coping with AD not returning the primary group
     * http://support.microsoft.com/?kbid=321360 
     * 
-    * For some reason it's not possible to search on primarygrouptoken=xx
+    * For some reason it's not possible to search on primarygrouptoken=XXX
     * If someone can show otherwise, I'd like to know about it :)
     * this way is resource intensive and generally a pain in the @#%^
     * 
@@ -2568,12 +2340,7 @@ class adLDAP {
 
         $group_array=array();
         for ($i=0; $i<$groups["count"]; $i++){ // For each group
-        	
-        	if (isset($groups[$i])) {
-            	$line=$groups[$i];
-        	} else {
-        		$line = '';
-        	}
+            $line=$groups[$i];
             
             if (strlen($line)>0){ 
                 // More presumptions, they're all prefixed with CN=

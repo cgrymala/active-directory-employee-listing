@@ -1,5 +1,15 @@
 <?php
+/**
+ * General class and method definitions for the active-directory-employee-list plugin
+ * @package Active-Directory-Employee-List
+ * @version 0.3
+ */
 if( !class_exists( 'active_directory_employee_list' ) ) {
+	/**
+	 * The root class used for the active-directory-employee-list WordPress plugin
+	 * This class is extended by the active_directory_employee_list_admin class and the 
+	 * 		active_directory_employee_list_output class.
+	 */
 	class active_directory_employee_list {
 		/**
 		 * The base string to be used to query the AD server
@@ -210,8 +220,8 @@ if( !class_exists( 'active_directory_employee_list' ) ) {
 			
 			add_action( 'init', array( &$this, '_init' ) );
 			
-			wp_register_script( 'ad-employee-list-admin', plugins_url( 'js/active-directory-employee-list.admin.js', dirname( __FILE__ ) ), array( 'jquery', 'post' ), '0.1a', true );
-			wp_register_style( 'ad-employee-list-admin-style', plugins_url( 'css/active-directory-employee-list.admin.css', dirname( __FILE__ ) ), array( 'widgets' ), '0.1a', 'all' );
+			wp_register_script( 'ad-employee-list-admin', plugins_url( 'js/active-directory-employee-list.admin.js', dirname( __FILE__ ) ), array( 'jquery', 'post' ), '0.3', true );
+			wp_register_style( 'ad-employee-list-admin-style', plugins_url( 'css/active-directory-employee-list.admin.css', dirname( __FILE__ ) ), array( 'widgets' ), '0.3', 'all' );
 		}
 		
 		/**
@@ -413,6 +423,60 @@ if( !class_exists( 'active_directory_employee_list' ) ) {
 				set_transient( $transname, $g, $this->transient_timeout );
 			
 			return $g;
+		}
+		
+		/**
+		 * Get a list of the allowed template tags
+		 */
+		function get_template_tags( $keys=true ) {
+			/**
+			 * Descriptions/list of AD/LDAP fields gleened from 
+			 * 		http://www.computerperformance.co.uk/Logon/LDAP_attributes_active_directory.htm
+			 */
+			$tags = array( 
+				'cn' 				=> 'Common name - First name and last name together',
+				'description' 		=> 'Full text description of user/group',
+				'displayname'		=> 'The name that should be displayed as the user\'s name',
+				'dn'				=> 'The pre-formatted user string used to bind to active directory',
+				'givenname'			=> 'The user\'s first name',
+				'name'				=> 'Should be the same as CN',
+				'samaccountname'	=> 'The unique user ID of the user (generally the login name)',
+				'sn'				=> 'The user\'s last name',
+				'userprincipalname'	=> 'A unique user ID, complete with domain, used for logging in',
+				'mail'				=> 'The user\'s email address',
+				'mailnickname'		=> 'The username portion of the user\'s email address',
+				'c'					=> 'Country or region',
+				'company'			=> 'The name of the user\'s company',
+				'department'		=> 'The name of the user\'s department in the company',
+				'homephone'			=> 'The user\'s home telephone number',
+				'l'					=> 'The physical location (city) of the user',
+				'location'			=> 'The computer location (??) of the user?',
+				'manager'			=> 'The user\'s boss or manager',
+				'mobile'			=> 'The user\'s mobile phone number',
+				'ou'				=> 'Organizational unit',
+				'postalcode'		=> 'ZIP code',
+				'st'				=> 'State, province or county',
+				'streetaddress'		=> 'First line of postal address',
+				'telephonenumber'	=> 'Office phone number',
+			);
+			return $keys ? array_keys( $tags ) : $tags;
+		}
+		
+		/**
+		 * Retrieve some instructions for using the output builder
+		 * @return string some HTML code explaining how to use the output builder
+		 *
+		 * @uses active_directory_employee_list::get_template_tags()
+		 */
+		function get_output_builder_instructions() {
+			$ob_note = $this->get_template_tags();
+			foreach( $ob_note as $k=>$o ) {
+				$ob_note[$k] = '%' . $o . '%';
+			}
+			$ob_note = sprintf( __( '<p>You can use any of the following tags (assuming you have set the plugin to retrieve these fields) within the output builder:</p> %s', $this->text_domain ), '<ul><li><p><code>' . implode( '</code></p></li><li><p><code>', $ob_note ) . '</code></p></li></ul>' );
+			$ob_note .= sprintf( __( '<p>You can also use conditional statements within the output builder. The conditional statements should begin with an <code>[if]</code> block and end with an <code>[endif]</code> block. They can also include <code>[elseif]</code> and <code>[else]</code> blocks. The <code>[if]</code> and <code>[elseif]</code> blocks should include a condition.</p><p>For instance, if you would like check to see if the user has an email address set in their active directory profile, you would use <code>[if mail]</code> or <code>[elseif mail]</code>.</p><p>The conditional statements simply check for the existence of a value in the field provided. You cannot nest conditional statements, nor can you provide multiple conditions in a single <code>[if]</code>/<code>[elseif]</code> (not yet, at least), unfortunately.</p><p>An example of a conditional might look something like:</p><p><code>%s</code></p>', $this->text_domain ), '&lt;h3&gt;[if mail]&lt;a href="mailto:%mail%"&gt;%givenname% %sn%&lt;/a&gt;[elseif displayname]%displayname%[else]%givenname% %sn%[endif]&lt;/h3&gt;' );
+			
+			return $ob_note;
 		}
 		
 	}

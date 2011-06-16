@@ -6,10 +6,12 @@ jQuery( function( $ ) {
 	$('input[type="checkbox"]#ignore_settings_group').click( adel_check_settings_fields );
 	$('input[type="checkbox"]#ignore_prefs_group').click( adel_check_prefs_fields );
 	$('input[type="checkbox"]#ignore_output_group').click( adel_check_output_fields );
+	$('a.adel-reveal-if-js').live( 'click', adel_toggle_hidenote );
 	
 	adel_check_settings_fields();
 	adel_check_prefs_fields();
 	adel_check_output_fields();
+	$('.adel-hide-if-js').hide();
 	
 	function adel_check_settings_fields() {
 		var settings_ignore = $('input[type="checkbox"]#ignore_settings_group');
@@ -20,6 +22,7 @@ jQuery( function( $ ) {
 		} else {
 			if( settings_ignore.closest('tr').siblings('tr').length <= 0 ) {
 				settings_ignore.closest('tr').after( adel_settings_rows );
+				$('.adel-hide-if-js').hide();
 			}
 		}
 	}
@@ -33,6 +36,7 @@ jQuery( function( $ ) {
 		} else {
 			if( settings_ignore.closest('tr').siblings('tr').length <= 0 ) {
 				settings_ignore.closest('tr').after( adel_prefs_rows );
+				$('.adel-hide-if-js').hide();
 			}
 		}
 	}
@@ -46,8 +50,14 @@ jQuery( function( $ ) {
 		} else {
 			if( settings_ignore.closest('tr').siblings('tr').length <= 0 ) {
 				settings_ignore.closest('tr').after( adel_output_rows );
+				$('.adel-hide-if-js').hide();
 			}
 		}
 	}
 	
+	function adel_toggle_hidenote() {
+		console.log( $(this) );
+		$( $(this).attr('href') ).toggle();
+		return false;
+	}
 } );

@@ -1,8 +1,17 @@
 <?php
+/**
+ * Widget class and method definitions for the active-directory-employee-list plugin
+ * @package Active-Directory-Employee-List
+ * @subpackage Administration
+ * @version 0.3
+ */
 if( !class_exists( 'active_directory_employee_list_output' ) )
 	require_once( 'class-active-directory-employee-list-output.php' );
 
 if( !class_exists( 'active_directory_employee_list_widget' ) ) {
+	/**
+	 * Class definition for the active_directory_employee_list_widget widget
+	 */
 	class active_directory_employee_list_widget extends WP_Widget {
 		var $adelObj = null;
 		

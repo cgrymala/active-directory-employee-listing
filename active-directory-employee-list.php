@@ -1,10 +1,9 @@
 <?php
 /*
 Plugin Name: Active Directory Employee Listing
-Version: 0.1a
 Plugin URI: http://plugins.ten-321.com/active-directory-employee-list/
 Description: Allows WordPress to retrieve and display a list of people from an active directory server
-Version: 0.1a
+Version: 0.3
 Author: Curtiss Grymala
 Author URI: http://ten-321.com/
 License: GPL2

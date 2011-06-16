@@ -1,8 +1,17 @@
 <?php
+/**
+ * Output and formatting class and method definitions for the active-directory-employee-list plugin
+ * @package Active-Directory-Employee-List
+ * @subpackage FrontEnd
+ * @version 0.3
+ */
 if( !class_exists( 'active_directory_employee_list' ) )
 	require_once( 'class-active-directory-employee-list.php' );
 
 if( !class_exists( 'active_directory_employee_list_output' ) ) {
+	/**
+	 * Class definition for output and formatting for the active directory employee list plugin
+	 */
 	class active_directory_employee_list_output extends active_directory_employee_list {
 		/**
 		 * The parsed output template for an individual item in the list
@@ -523,43 +532,6 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 		}
 		
 		/**
-		 * Get a list of the allowed template tags
-		 */
-		function get_template_tags( $keys=true ) {
-			/**
-			 * Descriptions/list of AD/LDAP fields gleened from 
-			 * 		http://www.computerperformance.co.uk/Logon/LDAP_attributes_active_directory.htm
-			 */
-			$tags = array( 
-				'cn' 				=> 'Common name - First name and last name together',
-				'description' 		=> 'Full text description of user/group',
-				'displayname'		=> 'The name that should be displayed as the user\'s name',
-				'dn'				=> 'The pre-formatted user string used to bind to active directory',
-				'givenname'			=> 'The user\'s first name',
-				'name'				=> 'Should be the same as CN',
-				'samaccountname'	=> 'The unique user ID of the user (generally the login name)',
-				'sn'				=> 'The user\'s last name',
-				'userprincipalname'	=> 'A unique user ID, complete with domain, used for logging in',
-				'mail'				=> 'The user\'s email address',
-				'mailnickname'		=> 'The username portion of the user\'s email address',
-				'c'					=> 'Country or region',
-				'company'			=> 'The name of the user\'s company',
-				'department'		=> 'The name of the user\'s department in the company',
-				'homephone'			=> 'The user\'s home telephone number',
-				'l'					=> 'The physical location (city) of the user',
-				'location'			=> 'The computer location (??) of the user?',
-				'manager'			=> 'The user\'s boss or manager',
-				'mobile'			=> 'The user\'s mobile phone number',
-				'ou'				=> 'Organizational unit',
-				'postalcode'		=> 'ZIP code',
-				'st'				=> 'State, province or county',
-				'streetaddress'		=> 'First line of postal address',
-				'telephonenumber'	=> 'Office phone number',
-			);
-			return $keys ? array_keys( $tags ) : $tags;
-		}
-		
-		/**
 		 * Register the ad-employee-list shortcode
 		 */
 		function add_shortcode() {
@@ -637,11 +609,7 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 			if( false !== $e )
 				return $e;
 			
-			print( "\n<!-- Preparing to search the following fields: \n" );
-			var_dump( $field );
-			print( "\n for the following values: \n" );
-			var_dump( $keyword );
-			print( "\n -->\n" );
+			$this->_log( "\n<!-- Preparing to search the following fields: \n", $field, "\n for the following values: \n", $keyword, "\n -->\n" );
 			
 			$e = $this->map_group_members( $this->ldap->search_users( $field, $keyword, $fields_to_show, $group ) );
 			set_transient( $hashkey, $e, $this->transient_timeout );
