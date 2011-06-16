@@ -308,6 +308,7 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 				$this->prefs_name		=> array(
 					'ad_group'				=> __( 'The Active Directory group to retrieve:', $this->text_domain ), 
 					'fields_to_show'		=> __( 'Which AD fields should be displayed in the list?', $this->text_domain ), 
+					'results_per_page'		=> __( 'How many results should be shown on a page?', $this->text_domain ),
 				),
 				$this->output_name		=> array(
 					'before_list'			=> __( 'Before the employee list:', $this->text_domain ), 
@@ -432,6 +433,7 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 			
 			$output['ad_group']				= empty( $input['ad_group'] ) ? null : $input['ad_group'];
 			$output['fields_to_show']		= empty( $input['fields_to_show'] ) ? null : ( is_array( $input['fields_to_show'] ) ? $input['fields_to_show'] : explode( ';', str_replace( ' ', '', $input['fields_to_show'] ) ) );
+			$output['results_per_page']		= empty( $input['results_per_page'] ) ? -1 : intval( $input['results_per_page'] );
 			
 			return array_map( 'stripslashes_deep', $output );
 		}
@@ -748,6 +750,11 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 						'options'	=> $template_tags,
 						'multiple'	=> true,
 						'class'		=> 'widefat',
+					),
+					'results_per_page'		=> array(
+						'default'	=> 25,
+						'class'		=> 'narrow',
+						'note'		=> 'Leaving this field blank will cause the plugin to attempt to display all retrieved results in one list. Otherwise, the results will be paginated with this many results showing on each page.',
 					),
 					/* Output options */
 					'before_list'			=> array(

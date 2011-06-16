@@ -184,6 +184,18 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 				return;
 			$output = '';
 			
+			if( isset( $_GET['adep'] ) && !empty( $_GET['adep'] ) )
+				$page = $_GET['adep'];
+			else
+				$page = 1;
+			
+			$total = count( $employees );
+			
+			if( 0 <= $this->results_per_page )
+				$employees = array_slice( $employees, ( ( $page - 1 ) * $this->results_per_page ), $this->results_per_page, true );
+			else
+				$this->results_per_page = $total;
+			
 			foreach( $employees as $k=>$e ) {
 				if( !empty( $this->item_wrap ) ) {
 					$fields = array_map( array( $this, '_map_fields_to_vars' ), array_keys( $employees[$k] ) );
@@ -209,6 +221,19 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 				}
 			}
 			
+			if( $total > $this->results_per_page ) {
+				/* We need to show pagination links */
+				if( 1 < $page )
+					/* We need to show the "previous page" link */
+					$output .= '<p><a href="?adep=' . ( $page - 1 ) . '">' . __( 'Previous page', $this->text_domain ) . '</a></p>';
+				if( ( $page * $this->results_per_page ) < $total )
+					/* We need to show the "next page" link */
+					$output .= '<p><a href="?adep=' . ( $page + 1 ) . '">' . __( 'Next page', $this->text_domain ) . '</a></p>';
+			}
+			if( $echo ) {
+				echo $e;
+				$output = '';
+			}
 			return $output;
 		}
 		
@@ -329,10 +354,6 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 			
 			set_transient( $hashkey, $e, $this->transient_timeout );
 			
-			/*print( "\n<!-- The user array looks like: \n" );
-			var_dump( $e );
-			print( "\n-->\n" );*/
-			
 			return $e;
 		}
 		
@@ -369,10 +390,6 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 		 * Map any information returned by the AD search function to a usable array
 		 */
 		protected function map_group_members( $users=array() ) {
-			/*print( "\n<!-- The raw users array looks like:\n" );
-			var_dump( $users );
-			print( "\n-->\n" );*/
-			
 			$i = 0;
 			
 			$us = array();

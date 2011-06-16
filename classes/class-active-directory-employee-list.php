@@ -66,6 +66,12 @@ if( !class_exists( 'active_directory_employee_list' ) ) {
 		 * @default null
 		 */
 		var $fields_to_show				= array( 'displayname', 'givenname', 'sn', 'mail', 'telephonenumber', 'department' );
+		/**
+		 * How many results to show at once
+		 * @var int
+		 * @default -1
+		 */
+		var $results_per_page			= -1;
 		
 		/**
 		 * A static string holding the key to the settings options stored in the database
