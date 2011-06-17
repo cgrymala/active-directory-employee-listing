@@ -72,6 +72,12 @@ if( !class_exists( 'active_directory_employee_list' ) ) {
 		 * @default -1
 		 */
 		var $results_per_page			= -1;
+		/**
+		 * Which field to use to sort the results
+		 * @var string
+		 * @default null
+		 */
+		var $order_by 					= null;
 		
 		/**
 		 * A static string holding the key to the settings options stored in the database
@@ -211,6 +217,16 @@ if( !class_exists( 'active_directory_employee_list' ) ) {
 		 */
 		var $after_list 				= null;
 		/**
+		 * Previous page link
+		 * @var string
+		 */
+		var $prev_page_link 			= '<span class="previous-page"><a href="%link%">Previous page</a></span>';
+		/**
+		 * Next page link
+		 * @var string
+		 */
+		var $next_page_link 			= '<span class="next-page"><a href="%link%">Next page</a></span>';
+		/**
 		 * The output template for an individual item in the list
 		 * @var string
 		 */
@@ -343,10 +359,10 @@ if( !class_exists( 'active_directory_employee_list' ) ) {
 		 * 		should occur within each of the individual functions to get the options)
 		 */
 		protected function get_option( $optname, $default=false ) {
-			if( $default === ( $opt = get_option( $optname, $default ) ) ) {
+			if( $default === ( $opt = get_option( $optname, $default ) ) || empty( $opt ) ) {
 				$this->_log( "\n<!-- The blog-level option returned ", $opt, " and the default is set to ", $default , " -->\n" );
 				
-				if( $default === ( $opt = get_site_option( $optname, $default ) ) ) {
+				if( $default === ( $opt = get_site_option( $optname, $default ) ) || empty( $opt ) ) {
 					$this->_log( "\n<!-- The network level option returned ", $opt, " and the default is set to ", $default, " -->\n" );
 					if( function_exists( 'get_mnetwork_option' ) ) {
 						$opt = get_mnetwork_option( $optname, $default );
@@ -483,6 +499,33 @@ if( !class_exists( 'active_directory_employee_list' ) ) {
 			$ob_note .= sprintf( __( '<p>You can also use conditional statements within the output builder. The conditional statements should begin with an <code>[if]</code> block and end with an <code>[endif]</code> block. They can also include <code>[elseif]</code> and <code>[else]</code> blocks. The <code>[if]</code> and <code>[elseif]</code> blocks should include a condition.</p><p>For instance, if you would like check to see if the user has an email address set in their active directory profile, you would use <code>[if mail]</code> or <code>[elseif mail]</code>.</p><p>The conditional statements simply check for the existence of a value in the field provided. You cannot nest conditional statements, nor can you provide multiple conditions in a single <code>[if]</code>/<code>[elseif]</code> (not yet, at least), unfortunately.</p><p>An example of a conditional might look something like:</p><p><code>%s</code></p>', $this->text_domain ), '&lt;h3&gt;[if mail]&lt;a href="mailto:%mail%"&gt;%givenname% %sn%&lt;/a&gt;[elseif displayname]%displayname%[else]%givenname% %sn%[endif]&lt;/h3&gt;' );
 			
 			return $ob_note;
+		}
+		
+		/**
+		 * Sort a multi-dimensional array by a value in the nested arrays
+		 * @param array &$array the array to be sorted
+		 * @param string $sort_field the key to be used as the sort field
+		 * @param string $order in which direction to sort the array ('asc' or 'desc')
+		 * @return array the sorted array
+		 */
+		function _sort_by_val( &$array, $sort_field, $order='asc' ) {
+			$tmp = array();
+			foreach( $array as $key=>$sub ) {
+				$tmp[$key] = array_key_exists( $sort_field, $sub ) ? $sub[$sort_field] : null;
+			}
+			
+			if( 'desc' === $order )
+				arsort( $tmp );
+			else
+				asort( $tmp );
+			
+			$keys = array_keys( $tmp );
+			$tmp = $array;
+			$array = array();
+			foreach( $keys as $k ) {
+				$array[$k] = $tmp[$k];
+			}
+			
 		}
 		
 	}

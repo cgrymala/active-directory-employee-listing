@@ -74,8 +74,15 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 			} else {
 				$employees = $this->get_employees();
 			}
-			if( empty( $employees ) )
+			if( empty( $employees ) || !is_array( $employees ) )
 				return array( 'noresults' => __( 'No employees could be found matching the criteria specified', $this->text_domain ) );
+			
+			print( "\n<!-- The order_by param is: \n" );
+			var_dump( $this->order_by );
+			print( "\n -->\n" );
+			
+			if( !empty( $this->order_by ) )
+				$this->_sort_by_val( $employees, $this->order_by );
 			
 			foreach( $employees as $username=>$e ) {
 				$output[$username] = $this->_replace_tags( $e, $username );
@@ -225,10 +232,10 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 				/* We need to show pagination links */
 				if( 1 < $page )
 					/* We need to show the "previous page" link */
-					$output .= '<p><a href="?adep=' . ( $page - 1 ) . '">' . __( 'Previous page', $this->text_domain ) . '</a></p>';
+					$output .= str_replace( '%link%', '?adep=' . ( $page + 1 ), $this->prev_page_link );
 				if( ( $page * $this->results_per_page ) < $total )
 					/* We need to show the "next page" link */
-					$output .= '<p><a href="?adep=' . ( $page + 1 ) . '">' . __( 'Next page', $this->text_domain ) . '</a></p>';
+					$output .= str_replace( '%link%', '?adep=' . ( $page + 1 ), $this->next_page_link );
 			}
 			if( $echo ) {
 				echo $e;
