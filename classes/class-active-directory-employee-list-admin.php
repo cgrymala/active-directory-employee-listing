@@ -302,40 +302,7 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 		 * Add all of the necessary settings fields to the options page
 		 */
 		function add_settings_fields() {
-			$fields = array(
-				$this->settings_name	=> array(
-					'_domain_controllers'	=> __( 'Domain controllers:', $this->text_domain ), 
-					'_base_dn'				=> __( 'Base DN:', $this->text_domain ), 
-					'_use_ssl'				=> __( 'Use an SSL connection?', $this->text_domain ), 
-					'_use_tls'				=> __( 'Use TLS after binding to LDAP?', $this->text_domain ), 
-					'_ad_port'				=> __( 'Port on which Active Directory listens:', $this->text_domain ), 
-					'_ad_username'			=> __( 'Bind user:', $this->text_domain ), 
-					'_ad_password'			=> __( 'Bind user password:', $this->text_domain ), 
-					'_account_suffix'		=> __( 'Account suffix for bind user:', $this->text_domain ), 
-				),
-				$this->prefs_name		=> array(
-					'ad_group'				=> __( 'The Active Directory group to retrieve:', $this->text_domain ), 
-					'_available_fields'		=> __( 'Which AD fields should be available in the list below?', $this->text_domain ), 
-					'fields_to_show'		=> __( 'Which AD fields should be displayed in the list?', $this->text_domain ), 
-					'results_per_page'		=> __( 'How many results should be shown on a page?', $this->text_domain ),
-				),
-				$this->output_name		=> array(
-					'before_list'			=> __( 'Before the employee list:', $this->text_domain ), 
-					'after_list'			=> __( 'After the employee list:', $this->text_domain ), 
-					'after_title'			=> __( 'After the list title:', $this->text_domain ), 
-					'title_wrap'			=> __( 'HTML element to wrap the list title:', $this->text_domain ), 
-					'title_class'			=> __( 'The list title CSS class:', $this->text_domain ), 
-					'title_id'				=> __( 'The HTML ID for the list title:', $this->text_domain ), 
-					'title'					=> __( 'The list title:', $this->text_domain ), 
-					'list_wrap'				=> __( 'HTML element to wrap the list:', $this->text_domain ), 
-					'list_class'			=> __( 'The list CSS class:', $this->text_domain ), 
-					'list_id'				=> __( 'The HTML ID for the list:', $this->text_domain ), 
-					'item_wrap'				=> __( 'The HTML element to wrap each list item:', $this->text_domain ), 
-					'item_class'			=> __( 'The CSS class for each list item:', $this->text_domain ), 
-					'item_id'				=> __( 'The HTML ID for each list item:', $this->text_domain ), 
-					'output_builder'		=> __( 'List item output builder:', $this->text_domain ), 
-				),
-			);
+			$fields = $this->_get_settings_fields();
 			
 			if( ( is_admin() && !is_network_admin() && is_multisite() ) || ( is_network_admin() && $this->is_multinetwork && !$this->_is_mn_settings_page ) ){
 				$ignore_text = __( '<strong>Ignore this group of options?</strong>', $this->text_domain );
@@ -458,6 +425,7 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 					}
 				}
 			}
+			$output['order_by'] 			= empty( $input['order_by'] ) ? null : $input['order_by'];
 			
 			return array_map( 'stripslashes_deep', $output );
 		}
@@ -703,6 +671,7 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 				echo '<div class="adel-hide-if-js" id="hidenote-' . $args['label_for'] . '">' . $field['hidenote'] . '</div>';
 			}
 		}
+		
 		protected function _get_settings_fields( $group='all' ) {
 			$fields = array(
 				$this->settings_name	=> array(
@@ -717,6 +686,7 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 				),
 				$this->prefs_name		=> array(
 					'ad_group'				=> __( 'The Active Directory group to retrieve:', $this->text_domain ), 
+					'_available_fields'		=> __( 'Which AD fields should be available in the list below?', $this->text_domain ),
 					'fields_to_show'		=> __( 'Which AD fields should be displayed in the list?', $this->text_domain ), 
 					'results_per_page'		=> __( 'How many results should be shown on a page?', $this->text_domain ),
 					'order_by'				=> __( 'Sort the list according to which field?', $this->text_domain ),
@@ -725,18 +695,23 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 					'before_list'			=> __( 'Before the employee list:', $this->text_domain ), 
 					'after_list'			=> __( 'After the employee list:', $this->text_domain ), 
 					'after_title'			=> __( 'After the list title:', $this->text_domain ), 
+					
 					'title_wrap'			=> __( 'HTML element to wrap the list title:', $this->text_domain ), 
 					'title_class'			=> __( 'The list title CSS class:', $this->text_domain ), 
 					'title_id'				=> __( 'The HTML ID for the list title:', $this->text_domain ), 
 					'title'					=> __( 'The list title:', $this->text_domain ), 
+					
 					'list_wrap'				=> __( 'HTML element to wrap the list:', $this->text_domain ), 
 					'list_class'			=> __( 'The list CSS class:', $this->text_domain ), 
 					'list_id'				=> __( 'The HTML ID for the list:', $this->text_domain ), 
+					
 					'item_wrap'				=> __( 'The HTML element to wrap each list item:', $this->text_domain ), 
 					'item_class'			=> __( 'The CSS class for each list item:', $this->text_domain ), 
 					'item_id'				=> __( 'The HTML ID for each list item:', $this->text_domain ), 
+					
 					'prev_page_link'		=> __( 'Previous page link:', $this->text_domain ), 
 					'next_page_link'		=> __( 'Next page link:', $this->text_domain ), 
+					
 					'output_builder'		=> __( 'List item output builder:', $this->text_domain ), 
 				),
 			);
@@ -854,6 +829,7 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 						'type'		=> 'textarea',
 						'class'		=> 'large-text',
 					),
+					
 					'title_wrap'			=> array(
 						'default'	=> 'h2',
 						'note'		=> __( 'The HTML element you would like to use to wrap the list title (if set). Just the element name, please; no opening or closing brackets.', $this->text_domain ), 
@@ -870,6 +846,7 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 						'default'	=> __( 'List of Employees', $this->text_domain ), 
 						'note'		=> __( 'The title you would like to appear at the top of the list. The title is output prior to the opening of the list itself.', $this->text_domain ), 
 					),
+					
 					'list_wrap'				=> array(
 						'default'	=> 'ul', 
 						'note'		=> __( 'The HTML element you would like to use to wrap the entire list. Just the element name, please; no opening or closing brackets.', $this->text_domain ), 
@@ -882,6 +859,7 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 						'default'	=> '',
 						'note'		=> __( 'If you would like to apply an HTML ID to the list itself, you can indicate that here. Remember that IDs should be unique, so, if you plan on using multiple employee lists on a single page, you should leave this blank.', $this->text_domain ), 
 					),
+					
 					'item_wrap'				=> array(
 						'default'	=> 'li',
 						'note'		=> __( 'The HTML element you would like to use to wrap each individual employee in the list. Just the element name, please; no opening or closing brackets.', $this->text_domain ), 
@@ -894,6 +872,7 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 						'default'	=> 'adel-list-item-%samaccountname%',
 						'note'		=> __( 'If you would like to apply an HTML ID to each individual employee in the list, you can indicate that here. You can use placeholder variables for user information (any of the fields that are set to be retrieved, plus the user\'s username (samaccountname). Simply wrap the placeholder variable with percent symbols (so, to use a placeholder for samaccountname, use %samaccountname%) All disallowed characters (the @ symbol, dots, spaces, etc.) will be replaced with hyphens. Remember that IDs should be unique, so, if you plan on using multiple employee lists that may include the same employee multiple times on a single page, you should leave this blank. Likewise, you should use a placeholder variable that will be unique.', $this->text_domain ), 
 					),
+						
 					'prev_page_link'		=> array(
 						'default'	=> '<span class="previous-page"><a href="%link%">Previous page</a></span>',
 						'note'		=> 'Please provide the HTML code you would like to use as the link to previous pages of results. You should use the %link% keyword where you would like the URL to appear. If this field is left blank, the link will not appear on the page at all.',
@@ -902,6 +881,7 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 						'default'	=> '<span class="next-page"><a href="%link%">Next page</a></span>',
 						'note'		=> 'Please provide the HTML code you would like to use as the link to the next pages of results. You should use the %link% keyword where you would like the URL to appear. If this field is left blank, the link will not appear on the page at all.',
 					),
+					
 					'output_builder'		=> array(
 						'default'	=> '&lt;article id=&quot;adel-employee-%samaccountname%&quot;&gt; &lt;p&gt; [if mail] &lt;a href=&quot;mailto:%mail%&quot;&gt;%displayname%&lt;/a&gt; [else] %displayname% [endif] &lt;br/&gt; %telephonenumber% &lt;br/&gt; %department% &lt;/p&gt; &lt;/article&gt;', 
 						'note'		=> __( 'Please indicate how you would like the information for each individual employee to be output within its list item wrapper. If this is left blank, the employee\'s information will simply be wrapped in a <code>&lt;ul&gt;</code> element with each field retrieved from the database being wrapped in <code>&lt;li&gt;</code> elements.', $this->text_domain ), 

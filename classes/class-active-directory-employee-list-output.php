@@ -78,6 +78,8 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 				return array( 'noresults' => __( 'No employees could be found matching the criteria specified', $this->text_domain ) );
 			if( !empty( $this->order_by ) )
 				$this->_sort_by_val( $employees, $this->order_by );
+			else
+				wp_die( var_dump( $this ) );
 			
 			foreach( $employees as $username=>$e ) {
 				$output[$username] = $this->_replace_tags( $e, $username );
