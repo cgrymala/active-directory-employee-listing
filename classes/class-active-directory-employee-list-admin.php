@@ -76,6 +76,11 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 		 * @default false
 		 */
 		protected $_is_mn_settings_page	= false;
+		/**
+		 * The list of available AD fields from which the user can choose
+		 * @var array
+		 */
+		protected $_available_fields = array();
 		
 		/**
 		 * A static array to hold the titles for the sections of options
@@ -104,6 +109,9 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 				}
 			}
 			
+			if( empty( $this->_available_fields ) )
+				$this->_available_fields = $this->get_template_tags( false );
+			
 			add_action( 'network_admin_menu', array( $this, 'network_admin_menu' ) );
 			add_action( 'admin_menu', array( $this, 'admin_menu' ) );
 			add_action( 'admin_init', array( &$this, '_init_admin' ) );
@@ -128,26 +136,6 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 			}
 			
 		} /* __construct() */
-		
-		/**
-		 * Perform any actions that need to happen in the admin area
-		 */
-		function _init_admin() {
-			$this->_get_settings();
-			
-			register_setting( $this->settings_page, 	$this->settings_name, 	array( $this, '_sanitize_options' 	) );
-			register_setting( $this->settings_page, 	$this->prefs_name, 		array( $this, '_sanitize_prefs' 	) );
-			register_setting( $this->settings_page,		$this->output_name,		array( $this, '_sanitize_output_opts' ) );
-			
-			$this->add_settings_sections();
-			
-			if( function_exists( 'add_meta_box' ) ) {
-				$this->_metaboxes = true;
-				$this->add_meta_boxes();
-			}
-			
-			$this->add_settings_fields();
-		}
 		
 		/**
 		 * Print an Admin Notice about lack of LDAP Support
@@ -238,101 +226,23 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 		}
 		
 		/**
-		 * Clean up any option settings that need to be cleaned up before saving
+		 * Perform any actions that need to happen in the admin area
 		 */
-		function _sanitize_options( $input ) {
-			$this->_get_options();
+		function _init_admin() {
+			$this->_get_settings();
 			
-			if( isset( $input['ignore_settings_group'] ) ) {
-				$this->_sanitized = true;
-				return false;
-			}
-			$this->_log( "\n<!-- The unsanitized opts look like:\n", $input, "\n and the AD password is: \n", $this->_ad_password, "\n-->\n" );
+			register_setting( $this->settings_page, 	$this->settings_name, 	array( $this, '_sanitize_options' 	) );
+			register_setting( $this->settings_page, 	$this->prefs_name, 		array( $this, '_sanitize_prefs' 	) );
+			register_setting( $this->settings_page,		$this->output_name,		array( $this, '_sanitize_output_opts' ) );
 			
-			if( $this->_sanitized )
-				return $opts;
+			$this->add_settings_sections();
 			
-			$output = array();
-			
-			$output['_domain_controllers']	= explode( ';', str_replace( ' ', '', $input['_domain_controllers'] ) );
-			$output['_base_dn'] 			= $input['_base_dn'];
-			$output['_use_ssl'] 			= isset( $input['_use_ssl'] ) ? true : false;
-			$output['_use_tls']				= isset( $input['_use_tls'] ) ? true : false;
-			$output['_ad_port']				= empty( $input['_ad_port'] ) ? 389 : $input['_ad_port'];
-			$output['_ad_username'] 		= $input['_ad_username'];
-			$output['_ad_password'] 		= base64_encode( $this->_ad_password ) == $input['_ad_password'] ? $input['_ad_password'] : base64_encode( $input['_ad_password'] );
-			$output['_account_suffix']		= empty( $input['_account_suffix'] ) ? '' : $input['_account_suffix'];
-			
-			$this->_sanitized = true;
-			
-			$this->_log( "\n<!-- The sanitized opts look like:\n", $output, "\n-->\n" );
-			
-			return array_map( 'stripslashes_deep', $output );
-		}
-		
-		/**
-		 * Clean up any preference settings that need to be sanitized before saving
-		 */
-		function _sanitize_prefs( $input ) {
-			if( isset( $input['ignore_prefs_group'] ) ) {
-				return false;
+			if( function_exists( 'add_meta_box' ) ) {
+				$this->_metaboxes = true;
+				$this->add_meta_boxes();
 			}
 			
-			$output = array();
-			
-			$output['ad_group']				= empty( $input['ad_group'] ) ? null : $input['ad_group'];
-			$output['fields_to_show']		= empty( $input['fields_to_show'] ) ? null : ( is_array( $input['fields_to_show'] ) ? $input['fields_to_show'] : explode( ';', str_replace( ' ', '', $input['fields_to_show'] ) ) );
-			$output['results_per_page']		= empty( $input['results_per_page'] ) ? -1 : intval( $input['results_per_page'] );
-			$output['order_by'] 			= empty( $input['order_by'] ) ? null : $input['order_by'];
-			
-			return array_map( 'stripslashes_deep', $output );
-		}
-		
-		/**
-		 * Clean up any output options that need to be sanitized before saving
-		 */
-		function _sanitize_output_opts( $input ) {
-			if( isset( $input['ignore_output_group'] ) ) {
-				return false;
-			}
-			
-			$output = array_map( 'stripslashes_deep', $input );
-			return $output;
-		}
-		
-		/**
-		 * Delete an option from the sitemeta table if appropriate
-		 * This is just a wrapper function for the maybe_delete_option() function
-		 * @uses active_directory_employee_list_admin::maybe_delete_option()
-		 */
-		function maybe_delete_site_option( $option, $value ) {
-			return $this->maybe_delete_option( $option, $value, 'site' );
-		}
-		
-		/**
-		 * Delete an option from the options or sitemeta table if appropriate
-		 */
-		function maybe_delete_option( $option, $value, $type=null ) {
-			if( false != $value )
-				return;
-			
-			if( $this->settings_name !== $option && $this->prefs_name !== $option && $this->output_name !== $option )
-				return;
-			
-			if( 'site' === $type )
-				return delete_site_option( $option );
-			else
-				return delete_option( $option );
-		}
-		
-		/**
-		 * (no internal description)
-		 * @deprecated
-		 */
-		function dump_sanitized_options() {
-			/*var_dump( func_get_args() );
-			die();
-			exit;*/
+			$this->add_settings_fields();
 		}
 		
 		/**
@@ -392,7 +302,40 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 		 * Add all of the necessary settings fields to the options page
 		 */
 		function add_settings_fields() {
-			$fields = $this->_get_settings_fields();
+			$fields = array(
+				$this->settings_name	=> array(
+					'_domain_controllers'	=> __( 'Domain controllers:', $this->text_domain ), 
+					'_base_dn'				=> __( 'Base DN:', $this->text_domain ), 
+					'_use_ssl'				=> __( 'Use an SSL connection?', $this->text_domain ), 
+					'_use_tls'				=> __( 'Use TLS after binding to LDAP?', $this->text_domain ), 
+					'_ad_port'				=> __( 'Port on which Active Directory listens:', $this->text_domain ), 
+					'_ad_username'			=> __( 'Bind user:', $this->text_domain ), 
+					'_ad_password'			=> __( 'Bind user password:', $this->text_domain ), 
+					'_account_suffix'		=> __( 'Account suffix for bind user:', $this->text_domain ), 
+				),
+				$this->prefs_name		=> array(
+					'ad_group'				=> __( 'The Active Directory group to retrieve:', $this->text_domain ), 
+					'_available_fields'		=> __( 'Which AD fields should be available in the list below?', $this->text_domain ), 
+					'fields_to_show'		=> __( 'Which AD fields should be displayed in the list?', $this->text_domain ), 
+					'results_per_page'		=> __( 'How many results should be shown on a page?', $this->text_domain ),
+				),
+				$this->output_name		=> array(
+					'before_list'			=> __( 'Before the employee list:', $this->text_domain ), 
+					'after_list'			=> __( 'After the employee list:', $this->text_domain ), 
+					'after_title'			=> __( 'After the list title:', $this->text_domain ), 
+					'title_wrap'			=> __( 'HTML element to wrap the list title:', $this->text_domain ), 
+					'title_class'			=> __( 'The list title CSS class:', $this->text_domain ), 
+					'title_id'				=> __( 'The HTML ID for the list title:', $this->text_domain ), 
+					'title'					=> __( 'The list title:', $this->text_domain ), 
+					'list_wrap'				=> __( 'HTML element to wrap the list:', $this->text_domain ), 
+					'list_class'			=> __( 'The list CSS class:', $this->text_domain ), 
+					'list_id'				=> __( 'The HTML ID for the list:', $this->text_domain ), 
+					'item_wrap'				=> __( 'The HTML element to wrap each list item:', $this->text_domain ), 
+					'item_class'			=> __( 'The CSS class for each list item:', $this->text_domain ), 
+					'item_id'				=> __( 'The HTML ID for each list item:', $this->text_domain ), 
+					'output_builder'		=> __( 'List item output builder:', $this->text_domain ), 
+				),
+			);
 			
 			if( ( is_admin() && !is_network_admin() && is_multisite() ) || ( is_network_admin() && $this->is_multinetwork && !$this->_is_mn_settings_page ) ){
 				$ignore_text = __( '<strong>Ignore this group of options?</strong>', $this->text_domain );
@@ -452,6 +395,118 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 				/*$menu_slug = */$this->settings_page, 
 				/*$function = */array($this, 'display_admin_page')
 			);
+		}
+		
+		/**
+		 * Clean up any option settings that need to be cleaned up before saving
+		 */
+		function _sanitize_options( $input ) {
+			$this->_get_options();
+			
+			if( isset( $input['ignore_settings_group'] ) ) {
+				$this->_sanitized = true;
+				return false;
+			}
+			$this->_log( "\n<!-- The unsanitized opts look like:\n", $input, "\n and the AD password is: \n", $this->_ad_password, "\n-->\n" );
+			
+			if( $this->_sanitized )
+				return $opts;
+			
+			$output = array();
+			
+			$output['_domain_controllers']	= explode( ';', str_replace( ' ', '', $input['_domain_controllers'] ) );
+			$output['_base_dn'] 			= $input['_base_dn'];
+			$output['_use_ssl'] 			= isset( $input['_use_ssl'] ) ? true : false;
+			$output['_use_tls']				= isset( $input['_use_tls'] ) ? true : false;
+			$output['_ad_port']				= empty( $input['_ad_port'] ) ? 389 : $input['_ad_port'];
+			$output['_ad_username'] 		= $input['_ad_username'];
+			$output['_ad_password'] 		= base64_encode( $this->_ad_password ) == $input['_ad_password'] ? $input['_ad_password'] : base64_encode( $input['_ad_password'] );
+			$output['_account_suffix']		= empty( $input['_account_suffix'] ) ? '' : $input['_account_suffix'];
+			
+			$this->_sanitized = true;
+			
+			$this->_log( "\n<!-- The sanitized opts look like:\n", $output, "\n-->\n" );
+			
+			return array_map( 'stripslashes_deep', $output );
+		}
+		
+		/**
+		 * Clean up any preference settings that need to be sanitized before saving
+		 */
+		function _sanitize_prefs( $input ) {
+			if( isset( $input['ignore_prefs_group'] ) ) {
+				return false;
+			}
+			
+			$output = array();
+			
+			$output['ad_group']				= empty( $input['ad_group'] ) ? null : $input['ad_group'];
+			$output['fields_to_show']		= empty( $input['fields_to_show'] ) ? null : ( is_array( $input['fields_to_show'] ) ? $input['fields_to_show'] : explode( ';', str_replace( ' ', '', $input['fields_to_show'] ) ) );
+			$output['results_per_page']		= empty( $input['results_per_page'] ) ? -1 : intval( $input['results_per_page'] );
+			if( empty( $input['_available_fields'] ) ) {
+				unset( $this->_available_fields );
+				$output['_available_fields'] = $this->get_template_tags( false );
+			} else {
+				$output['_available_fields'] = array();
+				$tmp = explode( "\n", str_replace( "\r", '', $input['_available_fields'] ) );
+				foreach( $tmp as $v ) {
+					$v = explode( '=>', $v );
+					if( is_array( $v ) ) {
+						$output['_available_fields'][trim( array_shift( $v ) )] = trim( implode( '=>', $v ) );
+					} else {
+						$output['_available_fields'][$v] = '';
+					}
+				}
+			}
+			
+			return array_map( 'stripslashes_deep', $output );
+		}
+		
+		/**
+		 * Clean up any output options that need to be sanitized before saving
+		 */
+		function _sanitize_output_opts( $input ) {
+			if( isset( $input['ignore_output_group'] ) ) {
+				return false;
+			}
+			
+			$output = array_map( 'stripslashes_deep', $input );
+			return $output;
+		}
+		
+		/**
+		 * Delete an option from the sitemeta table if appropriate
+		 * This is just a wrapper function for the maybe_delete_option() function
+		 * @uses active_directory_employee_list_admin::maybe_delete_option()
+		 */
+		function maybe_delete_site_option( $option, $value ) {
+			return $this->maybe_delete_option( $option, $value, 'site' );
+		}
+		
+		/**
+		 * Delete an option from the options or sitemeta table if appropriate
+		 */
+		function maybe_delete_option( $option, $value, $type=null ) {
+			if( false != $value )
+				return;
+			
+			if( $this->settings_name !== $option && $this->prefs_name !== $option && $this->output_name !== $option )
+				return;
+			
+			if( 'site' === $type )
+				return delete_site_option( $option );
+			else
+				return delete_option( $option );
+		}
+		
+		/**
+		 * (no internal description)
+		 * @deprecated
+		 */
+		function dump_sanitized_options() {
+			/*var_dump( func_get_args() );
+			die();
+			exit;*/
 		}
 		
 		/**
@@ -589,6 +644,9 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 			else/*if( $this->output_name === $args['section'] )*/
 				$value = isset( $this->_output_opts[$args['label_for']] ) ? $this->_output_opts[$args['label_for']] : false;
 			
+			if( array_key_exists( 'value', $field ) )
+				$value = $field['value'];
+			
 			switch( $field['type'] ) {
 				case 'checkbox':
 ?>
@@ -635,7 +693,7 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 				break;
 				default:
 ?>
-					<input class="<?php echo array_key_exists( 'class', $field ) ? $field['class'] : 'widefat' ?>" type="<?php echo $field['type'] ?>" name="<?php echo $args['section'] ?>[<?php echo $args['label_for'] ?>]" id="<?php echo $args['label_for'] ?>" value="<?php echo is_array( $value ) ? implode( ';', $value ) : esc_attr( $value ) ?>" placeholder="<?php echo esc_attr( $field['default'] ) ?>"/>
+					<input class="<?php echo array_key_exists( 'class', $field ) ? $field['class'] : 'widefat' ?>" type="<?php echo $field['type'] ?>" name="<?php echo $args['section'] ?>[<?php echo $args['label_for'] ?>]" id="<?php echo $args['label_for'] ?>" value="<?php echo is_array( $value ) ? implode( ';', $value ) : $value ?>" placeholder="<?php echo esc_attr( $field['default'] ) ?>"/>
 <?php
 			}
 			if( array_key_exists( 'note', $field ) )
@@ -645,7 +703,6 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 				echo '<div class="adel-hide-if-js" id="hidenote-' . $args['label_for'] . '">' . $field['hidenote'] . '</div>';
 			}
 		}
-		
 		protected function _get_settings_fields( $group='all' ) {
 			$fields = array(
 				$this->settings_name	=> array(
@@ -753,6 +810,13 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 					),
 					/* List Preferences */
 					'ad_group'				=> $this->get_ad_group_field_details(),
+					'_available_fields'		=> array(
+						'default'	=> null,
+						'type'		=> 'textarea',
+						'value'		=> str_replace( ': ', '=>', implode( "\n", $template_tags ) ),
+						'class'		=> 'large-text',
+						'note'		=> __( '<p>Please enter one field per line. You should enter each field in the following pattern: <code>field_name=>brief description of field</code>.</p><p>You will need to save the options before the list below will be updated.</p>', $this->text_domain ),
+					),
 					'fields_to_show'		=> array(
 						'default'	=> array( 'displayname', 'givenname', 'cn', 'mail', 'telephonenumber', 'department' ),
 						'type'		=> 'select',
@@ -949,6 +1013,16 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 ?>
         </div>
 <?php
+		}
+		
+		function get_template_tags( $keys=true ) {
+			if( isset( $this->_prefs['_available_fields'] ) )
+				$tags = $this->_prefs['_available_fields'];
+			else
+				$tags = parent::get_template_tags( false );
+			
+			ksort( $tags );
+			return $keys ? array_keys( $tags ) : $tags;
 		}
 		
 		/**

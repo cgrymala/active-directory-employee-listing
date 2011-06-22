@@ -72,13 +72,13 @@ if( !class_exists( 'active_directory_employee_list' ) ) {
 		 * @default -1
 		 */
 		var $results_per_page			= -1;
+		
 		/**
 		 * Which field to use to sort the results
 		 * @var string
 		 * @default null
 		 */
 		var $order_by 					= null;
-		
 		/**
 		 * A static string holding the key to the settings options stored in the database
 		 * @var string
@@ -451,6 +451,9 @@ if( !class_exists( 'active_directory_employee_list' ) ) {
 		 * Get a list of the allowed template tags
 		 */
 		function get_template_tags( $keys=true ) {
+			if( isset( $this->_available_fields ) )
+				return $keys ? array_keys( $this->_available_fields ) : $this->_available_fields;
+			
 			/**
 			 * Descriptions/list of AD/LDAP fields gleened from 
 			 * 		http://www.computerperformance.co.uk/Logon/LDAP_attributes_active_directory.htm
@@ -513,21 +516,17 @@ if( !class_exists( 'active_directory_employee_list' ) ) {
 			foreach( $array as $key=>$sub ) {
 				$tmp[$key] = array_key_exists( $sort_field, $sub ) ? $sub[$sort_field] : null;
 			}
-			
 			if( 'desc' === $order )
 				arsort( $tmp );
 			else
 				asort( $tmp );
-			
 			$keys = array_keys( $tmp );
 			$tmp = $array;
 			$array = array();
 			foreach( $keys as $k ) {
 				$array[$k] = $tmp[$k];
 			}
-			
 		}
-		
 	}
 }
 ?>

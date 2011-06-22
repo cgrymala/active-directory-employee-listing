@@ -76,11 +76,6 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 			}
 			if( empty( $employees ) || !is_array( $employees ) )
 				return array( 'noresults' => __( 'No employees could be found matching the criteria specified', $this->text_domain ) );
-			
-			print( "\n<!-- The order_by param is: \n" );
-			var_dump( $this->order_by );
-			print( "\n -->\n" );
-			
 			if( !empty( $this->order_by ) )
 				$this->_sort_by_val( $employees, $this->order_by );
 			
@@ -494,7 +489,7 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 			if( !stristr( $content, '[if' ) )
 				return $content;
 			
-			$pattern = '\[if(.+)\](.+)\[endif\]';
+			$pattern = '\[if([^\]]+)\](.+)\[\/*end\s*if\]';
 			preg_match_all( '/' . $pattern . '/sU', $content, $gmatches, PREG_SET_ORDER );
 			
 			$this->_log( "\n<!-- Global matches look like: \n", $gmatches, "\n-->\n" );
@@ -509,9 +504,18 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 					if( $replacement )
 						continue;
 					
+					$not = false;
+					if( '!' == $condition[0] ) {
+						$not = true;
+						$condition = substr( $condition, 1 );
+					}
 					if( !empty( $condition ) ) {
 						if( array_key_exists( $condition, $user ) && !empty( $user[$condition] ) ) {
-							$replacement = $m[3];
+							if( !$not && !empty( $user[$condition] ) ) {
+								$replacement = $m[3];
+							} elseif( $not && empty( $user[$condition] ) ) {
+								$replacement = $m[3];
+							}
 						}
 					} elseif( 'else' == $m[1] ) {
 						$replacement = $m[3];
