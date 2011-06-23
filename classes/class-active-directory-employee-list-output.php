@@ -71,8 +71,8 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 			
 			$output = array();
 			
-			if( isset( $_GET['adeq'] ) && !empty( $_GET['adeq'] ) ) {
-				$employees = $this->search_employees( $_GET['adeq'], $fields, $group );
+			if( isset( $_REQUEST['adeq'] ) && !empty( $_REQUEST['adeq'] ) ) {
+				$employees = $this->search_employees( $_REQUEST['adeq'], $fields, $group );
 			} else {
 				$employees = $this->get_employees();
 			}
@@ -191,8 +191,8 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 				return;
 			$output = '';
 			
-			if( isset( $_GET['adep'] ) && !empty( $_GET['adep'] ) )
-				$page = $_GET['adep'];
+			if( isset( $_REQUEST['adep'] ) && !empty( $_REQUEST['adep'] ) )
+				$page = $_REQUEST['adep'];
 			else
 				$page = 1;
 			
@@ -230,9 +230,10 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 			
 			if( $total > $this->results_per_page ) {
 				/* We need to show pagination links */
-				if( 1 < $page )
+				if( 1 < $page ) {
 					/* We need to show the "previous page" link */
 					$output .= str_replace( '%link%', '?adep=' . ( $page + 1 ), $this->prev_page_link );
+				}
 				if( ( $page * $this->results_per_page ) < $total )
 					/* We need to show the "next page" link */
 					$output .= str_replace( '%link%', '?adep=' . ( $page + 1 ), $this->next_page_link );

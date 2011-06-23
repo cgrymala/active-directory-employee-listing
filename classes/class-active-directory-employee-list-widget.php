@@ -95,6 +95,18 @@ if( !class_exists( 'active_directory_employee_list_widget' ) ) {
 		}
 		
 		function widget( $args, $instance ) {
+			$this->adelObj->output_built = null;
+			$this->adelObj->employee_list = null;
+			$_REQUEST['widget_adeq'] = isset( $_REQUEST['widget_adeq'] ) ? $_REQUEST['widget_adeq'] : '';
+			$_REQUEST['widget_adep'] = isset( $_REQUEST['widget_adep'] ) ? $_REQUEST['widget_adep'] : '';
+			if( isset( $_REQUEST['widget_adeq'] ) ) {
+				$tmp['adeq'] = isset( $_REQUEST['adeq'] ) ? $_REQUEST['adeq'] : null;
+				$_REQUEST['adeq'] = $_REQUEST['widget_adeq'];
+			}
+			if( isset( $_REQUEST['widget_adep'] ) ) {
+				$tmp['adep'] = isset( $_REQUEST['adep'] ) ? $_REQUEST['adep'] : null;
+				$_REQUEST['adep'] = $_REQUEST['widget_adep'];
+			}
 			extract( $args );
 			$title = apply_filters( 'widget_title', $instance['title'] );
 			
@@ -105,9 +117,14 @@ if( !class_exists( 'active_directory_employee_list_widget' ) ) {
 			
 			/*$this->adelObj->_log( "\n<!-- Preparing to run the render shortcode function with the following parameters:\n", $instance, "\n-->\n" );*/
 			
-			echo $this->adelObj->render_shortcode( $instance );
+			echo str_replace( array( 'adep=', 'name="adeq"', 'id="adeq"' ), array( 'widget_adep=', 'name="widget_adeq"', 'id="widget_adeq"' ), $this->adelObj->render_shortcode( $instance ) );
 			
 			echo $after_widget;
+			
+			foreach( $tmp as $k=>$v ) {
+				$_REQUEST[$k] = $v;
+			}
+			return;
 		}
 	}
 }
