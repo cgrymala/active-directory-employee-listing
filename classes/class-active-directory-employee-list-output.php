@@ -33,7 +33,7 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 		
 		/**
 		 * Actually output the employee list
-		 * @param string $group the name of the AD group to retrieve (null means all people will be retrieved)
+		 * @param string|array $group the name of the AD group to retrieve (null means all people will be retrieved)
 		 * @param array $fields an array of the fields to retrieve (empty means the default $fields_to_show property is used)
 		 * @param array $formatting an array of formatting options. You can include any of the formatting options in this 
 		 * 		array to replace the saved options.
@@ -53,7 +53,6 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 		 */
 		function list_employees( $group=null, $fields=array(), $formatting=array() ) {
 			$this->_get_options();
-			
 			$this->_extract_formats( $formatting );
 			
 			if( empty( $this->output_builder ) )
@@ -67,6 +66,9 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 			if( !empty( $fields ) )
 				$this->fields_to_show = $fields;
 			
+			if( !empty( $this->ad_group ) && !is_array( $this->ad_group ) )
+				$this->ad_group = array_map( 'trim', explode( ';', $this->ad_group ) );
+			
 			$output = array();
 			
 			if( isset( $_GET['adeq'] ) && !empty( $_GET['adeq'] ) ) {
@@ -78,8 +80,6 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 				return array( 'noresults' => __( 'No employees could be found matching the criteria specified', $this->text_domain ) );
 			if( !empty( $this->order_by ) )
 				$this->_sort_by_val( $employees, $this->order_by );
-			else
-				wp_die( var_dump( $this ) );
 			
 			foreach( $employees as $username=>$e ) {
 				$output[$username] = $this->_replace_tags( $e, $username );
@@ -104,6 +104,9 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 		 * @uses active_directory_employee_list::_show_close_list() to close the list and display any HTML after
 		 */
 		function show_employees( $group=null, $fields=array(), $formatting=array(), $echo=true ) {
+			if( !empty( $group ) && !is_array( $group ) )
+				$group = array_map( 'trim', explode( ';', $group ) );
+			
 			$employees = $this->list_employees( $group, $fields, $formatting );
 			
 			$output = $this->_show_title( $echo ); /* before_list, title_wrap, title, after_title */
@@ -300,11 +303,17 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 			if( isset( $this->employee_list ) )
 				return $this->employee_list;
 			
+			if( !empty( $this->ad_group ) && !is_array( $this->ad_group ) )
+				$this->ad_group = array_map( 'trim', explode( ';', $this->ad_group ) );
+			
 			$fields_to_show = $this->fields_to_show;
+			
 			if( !in_array( 'samaccountname', $fields_to_show ) )
 				array_unshift( $fields_to_show, 'samaccountname' );
+			if( !empty( $this->order_by ) && !in_array( $this->order_by, $fields_to_show ) )
+				array_push( $fields_to_show, $this->order_by );
 			
-			$hashkey = 'adel_group_' . md5( $this->ad_group . $fields_to_show );
+			$hashkey = 'adel_group_' . md5( implode( ';', $this->ad_group ) . $fields_to_show );
 			$tmp = get_transient( $hashkey );
 			if( false !== $tmp )
 				return $this->employee_list = $tmp;
@@ -314,7 +323,11 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 			$this->open_ldap();
 			
 			if( !empty( $this->ad_group ) ) {
-				$e = $this->ldap->get_group_users_info( $this->ad_group, $fields_to_show );
+				$e = array();
+				foreach( $this->ad_group as $g ) {
+					$d = $this->ldap->get_group_users_info( $g, $fields_to_show );
+					$e = array_merge( $e, $d );
+				}
 			} else {
 				$e = $this->ldap->get_group_users_info( null, $fields_to_show );
 			}
@@ -579,12 +592,14 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 			extract( shortcode_atts( array( 'fields' => array(), 'group' => null, 'username' => null ), $atts ) );
 			$atts = shortcode_atts( array_fill_keys( $this->_get_format_option_list(), null ), $atts );
 			
-			$this->_log( "\n<!-- The fields option looks like: \n", $fields, "\n and the group option looks like: \n", $group, "\n while the atts param looks like: \n", $atts, "\n -->\n" );
-			
 			if( !is_array( $fields ) )
 				$fields = explode( ',', str_replace( ' ', '', $fields ) );
 			if( !is_array( $fields ) )
 				$fields = array( $fields );
+			if( is_null( $group ) )
+				$group = $this->ad_group;
+			if( !empty( $group ) && !is_array( $group ) )
+				$group = array_map( 'trim', explode( ';', $group ) );
 			
 			$formatting = array();
 			foreach( $this->_get_format_option_list() as $opt ) {
@@ -618,6 +633,8 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 		function search_employees( $keyword, $field=null, $group=null ) {
 			$this->open_ldap();
 			
+			if( !empty( $group ) && !is_array( $group ) )
+				$group = array_map( 'trim', explode( ';', $group ) );
 			if( empty( $field ) ) {
 				$field = $this->fields_to_show;
 			}
@@ -633,15 +650,22 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 			$fields_to_show = $this->fields_to_show;
 			if( !in_array( 'samaccountname', $fields_to_show ) )
 				array_unshift( $fields_to_show, 'samaccountname' );
+			if( !empty( $this->order_by ) && !in_array( $this->order_by, $fields_to_show ) )
+				array_push( $fields_to_show, $this->order_by );
 			
-			$hashkey = 'adel_search_' . md5( 'k=' . ( is_array( $keyword ) ? implode( '|', $keyword ) : $keyword ) . 'f=' . ( is_array( $field ) ? implode( '|', $field ) : $field ) . 'fs=' . ( is_array( $fields_to_show ) ? implode( '|', $fields_to_show ) : $fields_to_show ) . ( !empty($group) ? 'g=' . $group : '' ) );
+			$hashkey = 'adel_search_' . md5( 'k=' . ( is_array( $keyword ) ? implode( '|', $keyword ) : $keyword ) . 'f=' . ( is_array( $field ) ? implode( '|', $field ) : $field ) . 'fs=' . ( is_array( $fields_to_show ) ? implode( '|', $fields_to_show ) : $fields_to_show ) . ( !empty($group) ? 'g=' . implode( ';', $group ) : '' ) );
 			$e = get_transient( $hashkey );
 			if( false !== $e )
 				return $e;
 			
 			$this->_log( "\n<!-- Preparing to search the following fields: \n", $field, "\n for the following values: \n", $keyword, "\n -->\n" );
 			
-			$e = $this->map_group_members( $this->ldap->search_users( $field, $keyword, $fields_to_show, $group ) );
+			$e = array();
+			foreach( $group as $g ) {
+				$d = $this->ldap->search_users( $field, $keyword, $fields_to_show, $g );
+				$d = $this->map_group_members( $d );
+				$e = array_merge( $e, $d );
+			}
 			set_transient( $hashkey, $e, $this->transient_timeout );
 			
 			return $e;

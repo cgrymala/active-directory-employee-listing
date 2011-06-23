@@ -53,10 +53,16 @@ if( !class_exists( 'active_directory_employee_list' ) ) {
 		 * @default null
 		 */
 		protected $_account_suffix 		= null;
+		/**
+		 * The port on which Active Directory should bind
+		 * @var int
+		 * @default null
+		 */
+		protected $_ad_port				= null;
 		
 		/**
 		 * An AD group to use to filter the results
-		 * @var string
+		 * @var string|array
 		 * @default null
 		 */
 		var $ad_group					= null;
@@ -321,23 +327,27 @@ if( !class_exists( 'active_directory_employee_list' ) ) {
 			$opt = $this->get_option( $this->prefs_name, false );
 			$o_opt = $this->get_option( $this->output_name, false );
 			
-			if( is_array( $opt ) && is_array( $g_opt ) )
-				$opt = array_merge( $g_opt, $opt );
-			elseif( !is_array( $opt ) )
-				$opt = $g_opt;
+			if( !is_array( $g_opt ) )
+				$g_opt = array();
+			if( !is_array( $opt ) )
+				$opt = array();
+			if( !is_array( $o_opt ) )
+				$o_opt = array();
 			
-			if( is_array( $opt ) && is_array( $o_opt ) )
-				$opt = array_merge( $o_opt, $opt );
-			elseif( !is_array( $opt ) )
-				$opt = $o_opt;
+			$opt = array_merge( $opt, $g_opt, $o_opt );
+			if( empty( $opt ) )
+				$opt = false;
 			
 			if( is_array( $opt ) ) {
 				$opt = $this->_format_options( $opt );
 				foreach( $opt as $k=>$v ) {
-					if( property_exists( $this, $k ) )
+					if( property_exists( $this, $k ) ) {
 						$this->$k = maybe_unserialize( $v );
+					}
 				}
 			}
+			if( !empty( $this->ad_group ) && !is_array( $this->ad_group ) )
+				$this->ad_group = array_map( 'trim', explode( ';', $this->ad_group ) );
 			return $opt;
 		}
 		
@@ -360,26 +370,26 @@ if( !class_exists( 'active_directory_employee_list' ) ) {
 		 */
 		protected function get_option( $optname, $default=false ) {
 			if( $default === ( $opt = get_option( $optname, $default ) ) || empty( $opt ) ) {
-				$this->_log( "\n<!-- The blog-level option returned ", $opt, " and the default is set to ", $default , " -->\n" );
+				/*$this->_log( "\n<!-- The blog-level option returned ", $opt, " and the default is set to ", $default , " -->\n" );*/
 				
 				if( $default === ( $opt = get_site_option( $optname, $default ) ) || empty( $opt ) ) {
-					$this->_log( "\n<!-- The network level option returned ", $opt, " and the default is set to ", $default, " -->\n" );
+					/*$this->_log( "\n<!-- The network level option returned ", $opt, " and the default is set to ", $default, " -->\n" );*/
 					if( function_exists( 'get_mnetwork_option' ) ) {
 						$opt = get_mnetwork_option( $optname, $default );
-						$this->_log( "\n<!-- The multi-network level option returned ", $opt, " and the default is set to ", $default, " -->\n" );
+						/*$this->_log( "\n<!-- The multi-network level option returned ", $opt, " and the default is set to ", $default, " -->\n" );*/
 					} else {
-						$this->_log( "\n<!-- The get_mnetwork_option function does not appear to exist. -->\n" );
+						/*$this->_log( "\n<!-- The get_mnetwork_option function does not appear to exist. -->\n" );*/
 					}
 				} else {
-					$this->_log( "\n<!-- The options were retrieved at the network level and looked like:\n", $opt, " and the default is set to ", $default, " -->\n" );
+					/*$this->_log( "\n<!-- The options were retrieved at the network level and looked like:\n", $opt, " and the default is set to ", $default, " -->\n" );*/
 				}
 			} else {
-				$this->_log( "\n<!-- The options were retrieved at the blog level and looked like:\n", $opt, " and the default is set to ", $default, " -->\n" );
+				/*$this->_log( "\n<!-- The options were retrieved at the blog level and looked like:\n", $opt, " and the default is set to ", $default, " -->\n" );*/
 			}
 			
 			$opt = stripslashes_deep( maybe_unserialize( $opt ) );
 			
-			$this->_log( "\n<!-- The retrieved options look like:\n", $opt, "\n-->\n" );
+			/*$this->_log( "\n<!-- The retrieved options look like:\n", $opt, "\n-->\n" );*/
 			
 			return $opt;
 		}

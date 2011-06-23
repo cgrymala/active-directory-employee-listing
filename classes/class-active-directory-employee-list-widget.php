@@ -44,7 +44,7 @@ if( !class_exists( 'active_directory_employee_list_widget' ) ) {
     <p>
         <label for="<?php echo $this->get_field_id( 'group' ) ?>"><?php _e( 'User group to show: ', $this->adelObj->text_domain ) ?></label> 
         <select class="widefat" name="<?php echo $this->get_field_name( 'group' ) ?>" id="<?php echo $this->get_field_id( 'group' ) ?>">
-        	<option<?php selected( $instance['group'], null ) ?>><?php _e( '-- Please select and option --', $this->adelObj->text_domain ) ?></option>
+        	<option<?php selected( $instance['group'], null ) ?> value=""><?php _e( '-- Please select an option --', $this->adelObj->text_domain ) ?></option>
 <?php
 			$groups = $this->adelObj->get_all_groups();
 			foreach( $groups as $v=>$l ) {
@@ -103,9 +103,7 @@ if( !class_exists( 'active_directory_employee_list_widget' ) ) {
 				echo $before_title . $title . $after_title;
 			unset( $instance['title'] );
 			
-			print( "\n<!-- Preparing to run the render shortcode function with the following parameters:\n" );
-			var_dump( $instance );
-			print( "\n-->\n" );
+			/*$this->adelObj->_log( "\n<!-- Preparing to run the render shortcode function with the following parameters:\n", $instance, "\n-->\n" );*/
 			
 			echo $this->adelObj->render_shortcode( $instance );
 			

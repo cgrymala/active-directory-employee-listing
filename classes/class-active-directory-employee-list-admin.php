@@ -172,6 +172,9 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 			$this->_settings	= stripslashes_deep( maybe_unserialize( call_user_func( "get_{$pre}option", $this->settings_name, array() ) ) );
 			$this->_prefs		= stripslashes_deep( maybe_unserialize( call_user_func( "get_{$pre}option", $this->prefs_name,	array() ) ) );
 			$this->_output_opts	= stripslashes_deep( maybe_unserialize( call_user_func( "get_{$pre}option", $this->output_name, array() ) ) );
+			/* Convert single string to array for backward compatibility */
+			if( !empty( $this->_prefs['ad_group'] ) && !is_array( $this->_prefs['ad_group'] ) )
+				$this->_prefs['ad_group'] = array_map( 'trim', explode( ';', $this->_prefs['ad_group'] ) );
 			return;
 		}
 		
@@ -190,19 +193,9 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 			$output = array();
 			if( is_network_admin() ) {
 				$output[$this->settings_name] 	= $this->_set_options_network( $this->settings_name, 	$opt[$this->settings_name] 	);
-				/*if( false === $output[$this->settings_name] && WP_DEBUG ) {
-					print( "\n<!--\nSettings query:\n" );
-					print $GLOBALS['wpdb']->last_query;
-					print( "\n-->\n" );
-				}*/
 				$output[$this->prefs_name] 		= $this->_set_options_network( $this->prefs_name,		$opt[$this->prefs_name]		);
 				
 				$output[$this->output_name]		= $this->_set_options_network( $this->output_name,		$opt[$this->output_name]	);
-				/*if( false === $output[$this->prefs_name] && WP_DEBUG ) {
-					print( "\n<!--\nPreferences query:\n" );
-					print $GLOBALS['wpdb']->last_query;
-					print( "\n-->\n" );
-				}*/
 			}
 			return $output;
 		}
@@ -407,7 +400,10 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 			
 			$output = array();
 			
-			$output['ad_group']				= empty( $input['ad_group'] ) ? null : $input['ad_group'];
+			$output['ad_group'] 			= null;
+			if( !empty( $input['ad_group'] ) ) {
+				$output['ad_group'] = is_array( $input['ad_group'] ) ? $input['ad_group'] : array_map( 'trim', explode( ';', $input['ad_group'] ) );
+			}
 			$output['fields_to_show']		= empty( $input['fields_to_show'] ) ? null : ( is_array( $input['fields_to_show'] ) ? $input['fields_to_show'] : explode( ';', str_replace( ' ', '', $input['fields_to_show'] ) ) );
 			$output['results_per_page']		= empty( $input['results_per_page'] ) ? -1 : intval( $input['results_per_page'] );
 			if( empty( $input['_available_fields'] ) ) {
@@ -661,7 +657,7 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 				break;
 				default:
 ?>
-					<input class="<?php echo array_key_exists( 'class', $field ) ? $field['class'] : 'widefat' ?>" type="<?php echo $field['type'] ?>" name="<?php echo $args['section'] ?>[<?php echo $args['label_for'] ?>]" id="<?php echo $args['label_for'] ?>" value="<?php echo is_array( $value ) ? implode( ';', $value ) : $value ?>" placeholder="<?php echo esc_attr( $field['default'] ) ?>"/>
+					<input class="<?php echo array_key_exists( 'class', $field ) ? $field['class'] : 'widefat' ?>" type="<?php echo $field['type'] ?>" name="<?php echo $args['section'] ?>[<?php echo $args['label_for'] ?>]" id="<?php echo $args['label_for'] ?>" value="<?php echo is_array( $value ) ? esc_attr( implode( ';', $value ) ) : esc_attr( $value ) ?>" placeholder="<?php echo esc_attr( $field['default'] ) ?>"/>
 <?php
 			}
 			if( array_key_exists( 'note', $field ) )
@@ -685,7 +681,7 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 					'_account_suffix'		=> __( 'Account suffix for bind user:', $this->text_domain ), 
 				),
 				$this->prefs_name		=> array(
-					'ad_group'				=> __( 'The Active Directory group to retrieve:', $this->text_domain ), 
+					'ad_group'				=> __( 'The Active Directory group(s) to retrieve:', $this->text_domain ), 
 					'_available_fields'		=> __( 'Which AD fields should be available in the list below?', $this->text_domain ),
 					'fields_to_show'		=> __( 'Which AD fields should be displayed in the list?', $this->text_domain ), 
 					'results_per_page'		=> __( 'How many results should be shown on a page?', $this->text_domain ),
@@ -900,15 +896,17 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 		 */
 		function get_ad_group_field_details() {
 			$rt = array(
-				'note'		=> __( 'If you would like to retrieve only members of a specific AD group, enter that group name here.', $this->text_domain ), 
 				'default'	=> false,
 			);
 			$g = $this->get_all_groups();
 			if( !empty( $g ) ) {
-				$rt['type'] = 'select';
-				$rt['options'] = $g;
+				$rt['type']		= 'select';
+				$rt['multiple']	= true;
+				$rt['options']	= $g;
+				$rt['note']		= __( 'Only users that belong to the groups selected in this field will be retrieved when the list of users is pulled from Active Directory. To select multiple groups, please use the Ctrl or Cmd button on your keyboard when clicking on the individual groups.', $this->text_domain );
 			} else {
-				$rt['type'] = 'text';
+				$rt['type']		= 'text';
+				$rt['note']		= __( 'Only users that belong to the groups listed in this field will be retrieved when the list of users is pulled from Active Directory. Please use the CN portion of the group name. To indicate multiple groups, please separate them with a semi-colon.', $this->text_domain );
 			}
 			
 			return $rt;
