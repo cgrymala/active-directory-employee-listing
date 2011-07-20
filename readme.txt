@@ -156,10 +156,10 @@ Unfortunately, there is [a documented issue with PHP](http://bugs.php.net/bug.ph
 4. The widget control.
 
 == Changelog ==
-
 = 0.3 =
 
-* Nothing yet, but hopefully we'll be out of alpha. :)
+* Fixed issue with custom ports (custom ports weren't used at all in previous versions because of limitations in adLDAP class)
+* Added conditional to make sure adLDAPE class is not declared multiple times
 
 = 0.2.1a =
 
