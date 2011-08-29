@@ -156,10 +156,13 @@ Unfortunately, there is [a documented issue with PHP](http://bugs.php.net/bug.ph
 4. The widget control.
 
 == Changelog ==
+
 = 0.3 =
 
 * Fixed issue with custom ports (custom ports weren't used at all in previous versions because of limitations in adLDAP class)
 * Added conditional to make sure adLDAPE class is not declared multiple times
+* Fixed PHP incompatibility issue (syntax error - line 65)
+* Fixed issue with saving options in non-network applications
 
 = 0.2.1a =
 
@@ -176,6 +179,10 @@ Unfortunately, there is [a documented issue with PHP](http://bugs.php.net/bug.ph
 * This is the first version. No documented changes have occurred yet.
 
 == Upgrade Notice ==
+
+= 0.3 =
+
+* Multiple bugfixes
 
 = 0.2.1a =
 

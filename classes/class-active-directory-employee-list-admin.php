@@ -93,6 +93,12 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 		 * @uses active_directory_employee_list::__construct()
 		 */
 		function __construct() {
+			if( !function_exists( 'ldap_connect' ) ) {
+				add_action( 'admin_notices', 			array( $this, '_ldap_not_supported' ) );
+				add_action( 'network_admin_notices', 	array( $this, '_ldap_not_supported' ) );
+				return;
+			}
+			
 			parent::__construct();
 			$this->_is_multinetwork();
 			
@@ -117,18 +123,12 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 			add_action( 'admin_init', array( &$this, '_init_admin' ) );
 			
 			add_action( 'add_site_option', 		array( $this, 'maybe_delete_site_option' 	), 99, 2 );
-			add_action( 'add_option', 			array( $this, 'maybe_delete_option' 		), 99, 2 );
+			/*add_action( 'add_option', 			array( $this, 'maybe_delete_option' 		), 99, 2 );*/
 			add_action( 'update_site_option', 	array( $this, 'maybe_delete_site_option' 	), 99, 2 );
-			add_action( 'update_option', 		array( $this, 'maybe_delete_option' 		), 99, 2 );
-			
-			if( !function_exists( 'ldap_connect' ) ) {
-				add_action( 'admin_notices', 			array( $this, '_ldap_not_supported' ) );
-				add_action( 'network_admin_notices', 	array( $this, '_ldap_not_supported' ) );
-				return;
-			}
+			/*add_action( 'update_option', 		array( $this, 'maybe_delete_option' 		), 99, 2 );*/
 			
 			if( isset( $_REQUEST['page'] ) && $this->settings_page == $_REQUEST['page'] ) {
-				if( ( !is_network_admin() && is_multisite() ) || ( $this->is_multinetwork && !$this->_is_mn_settings_page ) ) {
+				if( ( !is_network_admin() && is_plugin_active_for_network( 'active-directory-employee-list/active-directory-employee-list.php' ) ) || ( $this->is_multinetwork && !$this->_is_mn_settings_page ) ) {
 					add_action( ( is_network_admin() ? 'network_admin_notices' : 'admin_notices' ), array( $this, 'options_override_message' ) );
 				}
 				wp_enqueue_script( 'ad-employee-list-admin' );
@@ -141,7 +141,7 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 		 * Print an Admin Notice about lack of LDAP Support
 		 */
 		function _ldap_not_supported() {
-			echo '<div class="error"><p><strong>' . __( 'LDAP Not Supported', $this->text_domain ) . '</strong></p><p>' . sprintf( __( 'Your PHP configuration does not appear to support LDAP connections; therefore, the %s plug-in will not work at all. It is recommended that you deactivate the plug-in until you are able to update your PHP configuration to support LDAP.', $this->text_domain ), $this->plugin_name ) . '</p></div>';
+			echo '<div class="error"><p><strong>' . __( 'LDAP Not Supported', $this->text_domain ) . '</strong></p><p>' . sprintf( __( 'Your PHP configuration does not appear to support LDAP connections; therefore, the <strong>%s</strong> plug-in will not work at all. It is recommended that you deactivate the plug-in until you are able to update your PHP configuration to support LDAP.', $this->text_domain ), $this->plugin_name ) . '</p></div>';
 		} /* _ldap_not_supported() function */
 		
 		/**
@@ -296,8 +296,9 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 		 */
 		function add_settings_fields() {
 			$fields = $this->_get_settings_fields();
+			$this->_get_settings();
 			
-			if( ( is_admin() && !is_network_admin() && is_multisite() ) || ( is_network_admin() && $this->is_multinetwork && !$this->_is_mn_settings_page ) ){
+			if( ( is_admin() && !is_network_admin() && is_plugin_active_for_network( 'active-directory-employee-list/active-directory-employee-list.php' ) ) || ( is_network_admin() && $this->is_multinetwork && !$this->_is_mn_settings_page ) ){
 				$ignore_text = __( '<strong>Ignore this group of options?</strong>', $this->text_domain );
 				$fields[$this->settings_name]	= array_merge( array( 'ignore_settings_group' => $ignore_text ), $fields[$this->settings_name] );
 				$fields[$this->prefs_name]		= array_merge( array( 'ignore_prefs_group' => $ignore_text ), $fields[$this->prefs_name] );
@@ -984,7 +985,7 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 				}
 				
 				printf( __( '<p>Any options you set and save on this screen will override the global multi-network options that were set on the <a href="%s">multi-network options page</a>.</p><p>To avoid overriding a specific set of options, please check the "<strong>%s</strong>" box in the appropriate settings section.</p>', $this->text_domain ), $url, __( 'Ignore this group of options?', $this->text_domain ) );
-			} elseif( !is_network_admin() && is_multisite() ) {
+			} elseif( !is_network_admin() && is_plugin_active_for_network( 'active-directory-employee-list/active-directory-employee-list.php' ) ) {
 				$url = network_admin_url( 'settings.php?page=' . $this->settings_page );
 				printf( __( '<p>Any options you set and save on this screen will override the network options that were set on the <a href="%s">network options page</a>.</p><p>To avoid overriding a specific set of options, please check the "<strong>%s</strong>" box in the appropriate settings section.</p>', $this->text_domain ), $url, __( 'Ignore this group of options?', $this->text_domain ) );
 			}

@@ -62,6 +62,14 @@ function add_adel_widget() {
 	if( !class_exists( 'active_directory_employee_list_widget' ) )
 		require_once( 'classes/class-active-directory-employee-list-widget.php' );
 	
-	add_action( 'widgets_init', function() { register_widget( 'active_directory_employee_list_widget' ); } );
+	add_action( 'widgets_init', 'register_adel_widget' );
+}
+
+function register_adel_widget() {
+	register_widget( 'active_directory_employee_list_widget' );
+}
+
+if( is_multisite() && !function_exists( 'is_plugin_active_for_network' ) ) {
+	require_once( ABSPATH . '/wp-admin/includes/plugin.php' );
 }
 ?>
