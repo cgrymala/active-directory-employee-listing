@@ -76,11 +76,6 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 		 * @default false
 		 */
 		protected $_is_mn_settings_page	= false;
-		/**
-		 * The list of available AD fields from which the user can choose
-		 * @var array
-		 */
-		protected $_available_fields = array();
 		
 		/**
 		 * A static array to hold the titles for the sections of options
@@ -212,9 +207,11 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 		 */
 		protected function _set_options_network( $opt_name, $opt ) {
 			if( $this->_is_mn_settings_page && function_exists( 'update_mnetwork_option' ) ) {
-				return update_mnetwork_option( $opt_name, $opt );
+				$t = update_mnetwork_option( $opt_name, $opt );
+				return $t;
 			} else {
-				return update_site_option( $opt_name, $opt );
+				$t = update_site_option( $opt_name, $opt );
+				return $t;
 			}
 		}
 		
@@ -383,6 +380,7 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 			$output['_ad_username'] 		= $input['_ad_username'];
 			$output['_ad_password'] 		= base64_encode( $this->_ad_password ) == $input['_ad_password'] ? $input['_ad_password'] : base64_encode( $input['_ad_password'] );
 			$output['_account_suffix']		= empty( $input['_account_suffix'] ) ? '' : $input['_account_suffix'];
+			$output['always_ignore']		= empty( $input['always_ignore'] ) ? '' : $input['always_ignore'];
 			
 			$this->_sanitized = true;
 			
@@ -653,7 +651,7 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 				break;
 				case 'textarea':
 ?>
-					<textarea rows="10" cols="45" name="<?php echo $args['section'] ?>[<?php echo $args['label_for'] ?>]" id="<?php echo $args['label_for'] ?>"<?php echo array_key_exists( 'class', $field ) ? ' class="' . $field['class'] . '"' : '' ?> placeholder="<?php echo $field['default'] ?>"><?php echo esc_textarea( $value ) ?></textarea>
+					<textarea rows="10" cols="45" name="<?php echo $args['section'] ?>[<?php echo $args['label_for'] ?>]" id="<?php echo $args['label_for'] ?>"<?php echo array_key_exists( 'class', $field ) ? ' class="' . $field['class'] . '"' : '' ?> placeholder="<?php echo $field['default'] ?>"><?php echo is_array( $value ) ? esc_textarea( implode( "\n", $value ) ) : esc_textarea( $value ) ?></textarea>
 <?php
 				break;
 				default:
@@ -680,6 +678,8 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 					'_ad_username'			=> __( 'Bind user:', $this->text_domain ), 
 					'_ad_password'			=> __( 'Bind user password:', $this->text_domain ), 
 					'_account_suffix'		=> __( 'Account suffix for bind user:', $this->text_domain ), 
+					'always_ignore'			=> __( 'Additional query information:', $this->text_domain ),
+					
 				),
 				$this->prefs_name		=> array(
 					'ad_group'				=> __( 'The Active Directory group(s) to retrieve:', $this->text_domain ), 
@@ -779,6 +779,12 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 					'_account_suffix'		=> array(
 						'note'		=> __( 'If an account suffix (e.g. "@mydomain.local") needs to be appended to the bind user before it can be authenticated, enter that suffix here.', $this->text_domain ), 
 						'default'	=> null,
+					),
+					'always_ignore'			=> array(
+						'default'	=> '',
+						'note'		=> __( 'Must be entered in a format that can be directly fed into the LDAP query. If you are not familiar with LDAP queries, please do not use this field. This additional information will be applied to every LDAP query made.', $this->text_domain ),
+						'type'		=> 'textarea',
+						'class'		=> 'large-text',
 					),
 					/* List Preferences */
 					'ad_group'				=> $this->get_ad_group_field_details(),

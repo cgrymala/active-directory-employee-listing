@@ -59,12 +59,20 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 				$this->_get_default_output();
 			
 			$this->output_built = $this->_parse_template( $this->output_builder );
-			$this->_log( "\n<!-- Built output looks like: \n", $this->output_built, "\n and output builder looks like: \n", $this->output_builder, "\n-->\n" );
+			/*$this->_log( "\n<!-- Built output looks like: \n", $this->output_built, "\n and output builder looks like: \n", $this->output_builder, "\n-->\n" );*/
 			
 			if( !is_null( $group ) )
 				$this->ad_group = $group;
 			if( !empty( $fields ) )
 				$this->fields_to_show = $fields;
+			
+			if( in_array( 'gravatar', $this->fields_to_show ) ) {
+				unset( $this->fields_to_show[array_search( 'gravatar', $this->fields_to_show )] );
+				if( !in_array( 'mail', $this->fields_to_show ) )
+					array_push( $this->fields_to_show, 'mail' );
+				if( !in_array( 'targetaddress', $this->fields_to_show ) )
+					array_push( $this->fields_to_show, 'targetaddress' );
+			}
 			
 			if( !empty( $this->ad_group ) && !is_array( $this->ad_group ) )
 				$this->ad_group = array_map( 'trim', explode( ';', $this->ad_group ) );
@@ -72,7 +80,8 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 			$output = array();
 			
 			if( isset( $_REQUEST['adeq'] ) && !empty( $_REQUEST['adeq'] ) ) {
-				$employees = $this->search_employees( $_REQUEST['adeq'], $fields, $group );
+				$this->_log( $group, $_REQUEST['adeq'], print_r( $group, true ) );
+				$employees = $this->search_employees( $_REQUEST['adeq'], $this->fields_to_show, $this->ad_group );
 			} else {
 				$employees = $this->get_employees();
 			}
@@ -82,10 +91,41 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 				$this->_sort_by_val( $employees, $this->order_by );
 			
 			foreach( $employees as $username=>$e ) {
+				if( $this->_ignore_this_user( $e, $username ) )
+					continue;
 				$output[$username] = $this->_replace_tags( $e, $username );
 			}
 			
 			return $output;
+		}
+		
+		/**
+		 * Determine whether or not to ignore this user, based on the values of the always_ignore var
+		 */
+		protected function _ignore_this_user( $e=array(), $username=null ) {
+			return false;
+			
+			if( empty( $e ) )
+				return true;
+			if( empty( $this->always_ignore ) )
+				return false;
+			
+			foreach( $this->always_ignore as $c ) {
+				if( empty( $c ) )
+					continue;
+				
+				list( $key, $val ) = explode( '=', $c );
+				$val = str_replace( array( '"', "'" ), '', $val );
+				if( '!' == $key[0] ) {
+					$key = substr( $key, 1 );
+					if( $e[$key] != $val )
+						return true;
+				} else {
+					if( $e[$key] == $val )
+						return true;
+				}
+			}
+			return false;
 		}
 		
 		/**
@@ -103,16 +143,21 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 		 * @uses active_directory_employee_list::_show_list() to display the list itself
 		 * @uses active_directory_employee_list::_show_close_list() to close the list and display any HTML after
 		 */
-		function show_employees( $group=null, $fields=array(), $formatting=array(), $echo=true ) {
+		function show_employees( $group=null, $fields=array(), $formatting=array(), $echo=true, $show_title=true, $wrap_list=true, $include_search=true ) {
 			if( !empty( $group ) && !is_array( $group ) )
 				$group = array_map( 'trim', explode( ';', $group ) );
 			
+			/*error_log( '[ADEL Notice]: Preparing to retrieve info about ' . print_r( $group, true ) . '. The fields we are retrieving are: ' . print_r( $fields, true ) );*/
 			$employees = $this->list_employees( $group, $fields, $formatting );
 			
-			$output = $this->_show_title( $echo ); /* before_list, title_wrap, title, after_title */
-			$output .= $this->_show_open_list( $echo );
+			$output = '';
+			if( $show_title )
+				$output .= $this->_show_title( $echo, $include_search ); /* before_list, title_wrap, title, after_title */
+			if( $wrap_list )
+				$output .= $this->_show_open_list( $echo );
 			$output .= $this->_show_list( $echo, $employees );
-			$output .= $this->_show_close_list( $echo );
+			if( $wrap_list )
+				$output .= $this->_show_close_list( $echo );
 			
 			if( $echo )
 				echo $output;
@@ -131,7 +176,7 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 		 * @uses active_directory_employee_list::$title_id
 		 * @uses active_directory_employee_list::$after_title
 		 */
-		function _show_title( $echo=false ) {
+		function _show_title( $echo=false, $include_search=true ) {
 			$output = '';
 			if( !empty( $this->before_list ) ) {
 				$output .= $this->before_list;
@@ -157,7 +202,8 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 				}
 			}
 			
-			$output .= $this->simple_search_form();
+			if( $include_search )
+				$output .= $this->simple_search_form();
 			
 			return $output;
 		}
@@ -204,7 +250,7 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 				$this->results_per_page = $total;
 			
 			foreach( $employees as $k=>$e ) {
-				if( !empty( $this->item_wrap ) ) {
+				if( !empty( $this->item_wrap ) && is_array( $employees[$k] ) ) {
 					$fields = array_map( array( $this, '_map_fields_to_vars' ), array_keys( $employees[$k] ) );
 					$repl = array_map( array( $this, 'sanitize_html_id_class' ), $employees[$k] );
 					
@@ -319,9 +365,10 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 			if( false !== $tmp )
 				return $this->employee_list = $tmp;
 			
-			$this->_log( "\n<!-- AD Group: \n", $this->ad_group, "\n Fields to show: \n", $fields_to_show, "\n-->\n" );
+			$this->_log( "<!-- AD Group: ", $this->ad_group, " Fields to show: ", $fields_to_show, "-->" );
 			
-			$this->open_ldap();
+			if( true !== ( $e = $this->open_ldap() ) )
+				wp_die( 'The following error occurred: <pre><code>' . $e . '</code></pre>' );
 			
 			if( !empty( $this->ad_group ) ) {
 				$e = array();
@@ -360,14 +407,18 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 			if( false !== $tmp )
 				return $tmp;
 			
-			$this->open_ldap();
+			if( true !== ( $e = $this->open_ldap() ) )
+				wp_die( 'The following error occurred: <pre><code>' . $e . '</code></pre>' );
 			
 			if( !in_array( 'samaccountname', $fields_to_show ) )
 				array_unshift( $fields_to_show, 'samaccountname' );
 			
-			$this->_log( "\n<!-- The username is: $username and the fields array looks like: \n", $fields_to_show, "\n-->\n" );
+			/*$this->_log( "\n<!-- The username is: $username and the fields array looks like: \n", $fields_to_show, "\n-->\n" );*/
 			
 			$e = $this->ldap->user_info( $username, $fields_to_show );
+			if( empty( $e ) && !empty( $this->_account_suffix ) )
+				$e = $this->ldap->user_info( $username . $this->_account_suffix, $fields_to_show );
+			
 			$e = $this->map_group_members( $e );
 			
 			set_transient( $hashkey, $e, $this->transient_timeout );
@@ -387,19 +438,21 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 		 * @uses active_directory_employee_list_output::_replace_tags()
 		 */
 		function show_employee( $username=null, $fields=array(), $formatting=array(), $echo=false ) {
-			$this->open_ldap();
+			if( true !== ( $e = $this->open_ldap() ) )
+				wp_die( 'The following error occurred: <pre><code>' . $e . '</code></pre>' );
 			
+			/*error_log( '[ADEL Notice]: Preparing to retrieve info about ' . $username . '. The fields we are retrieving are: ' . print_r( $fields, true ) );*/
 			$e = array_pop( $this->get_employee( $username, $fields ) );
 			
 			$this->_extract_formats( $formatting );
 			
 			$this->_parse_template();
 			
-			$this->_log( "\n<!-- The list of replacement tags looks like: \n", $this->_replacement_tags, "\n --> \n" );
+			/*$this->_log( "\n<!-- The list of replacement tags looks like: \n", $this->_replacement_tags, "\n --> \n" );*/
 			
 			$e = $this->_replace_tags( $e, $username );
 			
-			$this->_log( "\n<!-- The employee looks like: \n", $e, "\n --> \n" );
+			/*$this->_log( "\n<!-- The employee looks like: \n", $e, "\n --> \n" );*/
 			
 			return $echo ? print( $e ) : $e;
 		}
@@ -407,7 +460,7 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 		/**
 		 * Map any information returned by the AD search function to a usable array
 		 */
-		protected function map_group_members( $users=array() ) {
+		protected function map_group_members( $users=array(), $groupname=null ) {
 			$i = 0;
 			
 			$us = array();
@@ -423,6 +476,8 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 					foreach( $this->fields_to_show as $field ) {
 						$us[$sn][$field] = array_key_exists( $field, $user ) ? $user[$field][0] : null;
 					}
+					if( !empty( $groupname ) )
+						$us[$sn]['activeusergroup'] = $groupname;
 					$i++;
 				}
 			}
@@ -448,7 +503,15 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 		 * Sets a simple default value for the active_directory_employee_list::$output_builder property
 		 */
 		function _get_default_output() {
-			$this->output_builder = '<ul><li>%' . implode( '%</li><li>%', $this->fields_to_show ) . '%</li></ul>';
+			if( !is_array( $this->fields_to_show ) )
+				return null;
+			
+			$this->output_builder = '<ul>';
+			foreach( $this->fields_to_show as $f ) {
+				$this->output_builder .= '<li class="' . $f . '">%' . $f . '%</li>';
+			}
+			$this->output_builder .= '</ul>';
+			/*$this->output_builder = '<ul><li>%' . implode( '%</li><li>%', $this->fields_to_show ) . '%</li></ul>';*/
 			return $this->output_builder;
 		}
 		
@@ -481,12 +544,19 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 		function _replace_tags( $user, $username=null ) {
 			$tags = array();
 			foreach( $this->_replacement_tags as $t ) {
-				if( array_key_exists( strtolower( $t ), $user ) ) {
+				if( 'gravatar' == $t ) {
+					$m = array_key_exists( 'targetaddress', $user ) && !empty( $user['targetaddress'] ) ? $user['targetaddress'] : $user['mail'];
+					$tags[] = 'http://www.gravatar.com/avatar/' . md5( trim( strtolower( $m ) ) ) . '?size=' . $this->gravatar_size;
+				} elseif( array_key_exists( strtolower( $t ), $user ) ) {
 					$tags[] = $user[$t];
 				} else {
 					$tags[] = '';
 				}
 			}
+			
+			/*error_log( '[ADEL Debug]: The replacement tags array looks like: ' . print_r( $this->_replacement_tags, true ) );
+			error_log( '[ADEL Debug]: The tag values array looks like ' . print_r( $tags, true ) );*/
+			
 			$content = $this->_handle_if_else( $this->output_built, $user );
 			return vsprintf( $content, $tags );
 		}
@@ -508,7 +578,7 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 			$pattern = '\[if([^\]]+)\](.+)\[\/*end\s*if\]';
 			preg_match_all( '/' . $pattern . '/sU', $content, $gmatches, PREG_SET_ORDER );
 			
-			$this->_log( "\n<!-- Global matches look like: \n", $gmatches, "\n-->\n" );
+			/*$this->_log( "\n<!-- Global matches look like: \n", $gmatches, "\n-->\n" );*/
 			
 			foreach( $gmatches as $match ) {
 				$pattern = '\[(if|elseif|else)(.*?)\]([^\[]+)';
@@ -520,18 +590,19 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 					if( $replacement )
 						continue;
 					
-					$not = false;
-					if( '!' == $condition[0] ) {
-						$not = true;
-						$condition = substr( $condition, 1 );
-					}
 					if( !empty( $condition ) ) {
-						if( array_key_exists( $condition, $user ) && !empty( $user[$condition] ) ) {
-							if( !$not && !empty( $user[$condition] ) ) {
+						/* We have to check for inclusive conditions */
+						if( strstr( $condition, '&&' ) ) {
+							if( $this->_handle_if_else_inclusive( $condition, $user ) )
 								$replacement = $m[3];
-							} elseif( $not && empty( $user[$condition] ) ) {
+						/* We have to check for exclusive conditions */
+						} elseif( strstr( $condition, '||' ) ) {
+							if( $this->_handle_if_else_exclusive( $condition, $user ) )
 								$replacement = $m[3];
-							}
+						/* We have to check for single condition */
+						} else {
+							if( $this->_handle_if_else_single( $condition, $user ) )
+								$replacement = $m[3];
 						}
 					} elseif( 'else' == $m[1] ) {
 						$replacement = $m[3];
@@ -545,12 +616,70 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 		}
 		
 		/**
+		 * Handle inclusive (and) conditions in an if/else statement
+		 */
+		protected function _handle_if_else_inclusive( $condition=null, $user=array() ) {
+			$check = explode( '&&', $condition );
+			$passed = false;
+			foreach( $check as $c ) {
+				if( $this->_handle_if_else_single( $c, $user ) )
+					$passed = true;
+				else
+					return false;
+			}
+			return $passed;
+		}
+		
+		/**
+		 * Handle exclusive (or) conditions in an if/else statement
+		 */
+		protected function _handle_if_else_exclusive( $condition=null, $user=array() ) {
+			$check = explode( '||', $condition );
+			$passed = false;
+			foreach( $check as $c ) {
+				if( $this->_handle_if_else_single( $c, $user ) )
+					return true;
+			}
+			return false;
+		}
+		
+		/**
+		 * Handle a single condition in an if/else statement
+		 */
+		protected function _handle_if_else_single( $c=null, $user=array() ) {
+			$c = trim( $c );
+			if( strstr( $c, '=' ) ) {
+				list( $key, $val ) = explode( '=', $c );
+				$key = trim( $key );
+				$val = trim( str_replace( array( '"', "'" ), '', $val ) );
+				if( '!' == $key[0] ) {
+					$key = substr( $key, 1 );
+					if( !array_key_exists( $key, $user ) || $user[$key] != $val ) {
+						return true;
+					}
+				} elseif( array_key_exists( $key, $user ) && $user[$key] == $val ) {
+					return true;
+				}
+			} else {
+				if( '!' == $c[0] ) {
+					$key = substr( $c, 1 );
+					if( !array_key_exists( $key, $user ) || empty( $user[$key] ) ) {
+						return true;
+					}
+				} elseif( array_key_exists( $c, $user ) && !empty( $user[$c] ) ) {
+					return true;
+				}
+			}
+			return false;
+		}
+		
+		/**
 		 * Perform the replacement of a specific template tag
 		 */
 		function do_template_tag( $m ) {
 			$template_tags = $this->get_template_tags();
 			
-			$this->_log( "\n<!-- Matches look like: \n", $m, "\n-->\n" );
+			/*$this->_log( "\n<!-- Matches look like: \n", $m, "\n-->\n" );*/
 			
 			$this->_replacement_tags[] = $m[2];
 			return $m[1] . '%' . count( $this->_replacement_tags ) . '$s' . $m[3];
@@ -565,12 +694,12 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 			
 			$template_tags = $this->get_template_tags();
 			
-			$this->_log( "\n<!-- Template tags array looks like: \n", $template_tags, "\n -->\n" );
+			/*$this->_log( "\n<!-- Template tags array looks like: \n", $template_tags, "\n -->\n" );*/
 			
 			$tagregexp = join( '|', array_map( 'preg_quote', $template_tags ) );
 			$this->_template_regexp = '(.?)\%(' . $tagregexp . ')\%(.?)';
 			
-			$this->_log( "\n<!-- Template RegExp looks like: \n", $this->_template_regexp, "\n-->\n" );
+			/*$this->_log( "\n<!-- Template RegExp looks like: \n", $this->_template_regexp, "\n-->\n" );*/
 			
 			return $this->_template_regexp;
 		}
@@ -590,7 +719,7 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 		function render_shortcode( $atts ) {
 			$content = '';
 			
-			extract( shortcode_atts( array( 'fields' => array(), 'group' => null, 'username' => null ), $atts ) );
+			extract( shortcode_atts( array( 'fields' => array(), 'group' => null, 'username' => null, 'include_search' => true ), $atts ) );
 			$atts = shortcode_atts( array_fill_keys( $this->_get_format_option_list(), null ), $atts );
 			
 			if( !is_array( $fields ) )
@@ -610,7 +739,7 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 			
 			$content .= !is_null( $username ) ? 
 				$this->show_employee( $username, $fields, $formatting, false ) : 
-				$this->show_employees( $group, $fields, $formatting, false );
+				$this->show_employees( $group, $fields, $formatting, false, $include_search );
 			
 			return $content;
 		}
@@ -632,7 +761,8 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 		 * @return array the list of employees that matched the search query
 		 */
 		function search_employees( $keyword, $field=null, $group=null ) {
-			$this->open_ldap();
+			if( true !== ( $e = $this->open_ldap() ) )
+				wp_die( 'The following error occurred: <pre><code>' . $e . '</code></pre>' );
 			
 			if( !empty( $group ) && !is_array( $group ) )
 				$group = array_map( 'trim', explode( ';', $group ) );
@@ -648,6 +778,9 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 			if( !is_array( $keyword ) )
 				$keyword = array_fill( 0, count( $field ), $keyword );
 			
+			if( !is_array( $this->fields_to_show ) )
+				return array();
+			
 			$fields_to_show = $this->fields_to_show;
 			if( !in_array( 'samaccountname', $fields_to_show ) )
 				array_unshift( $fields_to_show, 'samaccountname' );
@@ -656,15 +789,18 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 			
 			$hashkey = 'adel_search_' . md5( 'k=' . ( is_array( $keyword ) ? implode( '|', $keyword ) : $keyword ) . 'f=' . ( is_array( $field ) ? implode( '|', $field ) : $field ) . 'fs=' . ( is_array( $fields_to_show ) ? implode( '|', $fields_to_show ) : $fields_to_show ) . ( !empty($group) ? 'g=' . implode( ';', $group ) : '' ) );
 			$e = get_transient( $hashkey );
-			if( false !== $e )
+			if( false !== $e ) {
+				/*error_log( '[ADEL Notice]: The list of users was found in the transients data, so that is being returned.' );*/
 				return $e;
+			}
 			
 			$this->_log( "\n<!-- Preparing to search the following fields: \n", $field, "\n for the following values: \n", $keyword, "\n -->\n" );
 			
 			$e = array();
+			$ai = empty( $this->always_ignore ) ? null : $this->always_ignore;
 			foreach( $group as $g ) {
-				$d = $this->ldap->search_users( $field, $keyword, $fields_to_show, $g );
-				$d = $this->map_group_members( $d );
+				$d = $this->ldap->search_users( $field, $keyword, $fields_to_show, $g, $ai );
+				$d = $this->map_group_members( $d, $g );
 				$e = array_merge( $e, $d );
 			}
 			set_transient( $hashkey, $e, $this->transient_timeout );
@@ -718,5 +854,6 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 	</form>';
 			return $echo ? print( $form ) : $form;
 		}
+		
 	}
 }

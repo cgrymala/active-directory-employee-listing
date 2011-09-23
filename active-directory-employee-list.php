@@ -61,11 +61,17 @@ function init_active_directory_employee_list() {
 function add_adel_widget() {
 	if( !class_exists( 'active_directory_employee_list_widget' ) )
 		require_once( 'classes/class-active-directory-employee-list-widget.php' );
+	if( !class_exists( 'ADEL_Single_Widget' ) )
+		require_once( 'classes/class-adel-single-widget.php' );
+	if( !class_exists( 'ADEL_List_Widget' ) )
+		require_once( 'classes/class-adel-list-widget.php' );
 	
 	add_action( 'widgets_init', 'register_adel_widget' );
 }
 
 function register_adel_widget() {
+	register_widget( 'ADEL_List_Widget' );
+	register_widget( 'ADEL_Single_Widget' );
 	register_widget( 'active_directory_employee_list_widget' );
 }
 

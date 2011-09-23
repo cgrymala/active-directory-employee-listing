@@ -163,6 +163,9 @@ Unfortunately, there is [a documented issue with PHP](http://bugs.php.net/bug.ph
 * Added conditional to make sure adLDAPE class is not declared multiple times
 * Fixed PHP incompatibility issue (syntax error - line 65)
 * Fixed issue with saving options in non-network applications
+* Fixed minor bugs
+* Split widget into 2 separate widgets (one for single employees and a separate one for lists of employees)
+* Added some preset output builder values for widgets
 
 = 0.2.1a =
 

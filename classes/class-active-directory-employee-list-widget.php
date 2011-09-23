@@ -15,12 +15,23 @@ if( !class_exists( 'active_directory_employee_list_widget' ) ) {
 	class active_directory_employee_list_widget extends WP_Widget {
 		var $adelObj = null;
 		
+		function deprecated_notice() {
+?>
+<div class="updated"><p><?php _e( 'The old Active Directory Employee Widget has been replaced with two separate widgets. In the next version of the ADEL plugin, the old version of the widget will be removed. Please update your widgets to use the new widgets. Thank you.', $this->adelObj->text_domain ) ?></p></div>
+<?php
+		}
+		
 		function active_directory_employee_list_widget() {
 			$this->adelObj = new active_directory_employee_list_output;
-			if( is_admin() && stristr( basename( $_SERVER['REQUEST_URI'] ), 'widgets.php' ) )
-				wp_enqueue_style( 'ad-employee-list-admin-style' );
+			add_action( 'admin_print_styles-widgets.php', array( &$this, 'enqueue_admin_styles' ) );
 			
-			parent::WP_Widget( 'adel_list_widget', 'Active Directory Employee Widget', array( 'description' => __( 'Display either a list of people or details about a specific person as retrieved from the Active Directory', $this->adelObj->text_domain ) ), array( 'width' => 450 ) );
+			parent::WP_Widget( 'adel_list_widget', 'Active Directory Employee Widget', array( 'description' => __( 'This widget has been deprecated. Two new widgets, the "AD List Widget" and the "AD Employee Widget" have been provided, instead.', $this->adelObj->text_domain ) ), array( 'width' => 450 ) );
+		}
+		
+		function enqueue_admin_styles() {
+			add_action( 'admin_notices', array( &$this, 'deprecated_notice' ) );
+			
+			wp_enqueue_style( 'ad-employee-list-admin-style' );
 		}
 		
 		function form( $instance ) {
@@ -32,6 +43,7 @@ if( !class_exists( 'active_directory_employee_list_widget' ) ) {
 			 * + fields
 			 * + output_builder
 			 */
+			 $instance = array_merge( array( 'title'=>null, 'username'=>null, 'group'=>null, 'fields'=>array(), 'output_builder'=>null ), $instance );
 ?>
     <p>
         <label for="<?php echo $this->get_field_id( 'title' ) ?>"><?php _e( 'Title: ', $this->adelObj->text_domain ) ?></label> 

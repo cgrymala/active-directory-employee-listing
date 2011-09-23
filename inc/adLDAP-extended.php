@@ -8,6 +8,34 @@ if( !class_exists( 'adLDAPE' ) ) {
 		var $_ad_port		= 389;
 		
 		/**
+		* The account prefix for your domain, can be set when the class is invoked
+		* 
+		* Added by CAG for the extended version of this class
+		* @var string
+		*/   
+		protected $_account_prefix = "";
+		/**
+		* Set the account prefix
+		* 
+		* Added by CAG for the extended version of this class
+		* @param string $_account_suffix
+		* @return void
+		*/
+		public function set_account_prefix($_account_prefix)
+		{
+			  $this->_account_prefix = $_account_prefix;
+		}
+		/**
+		* Get the account prefix
+		* 
+		* Added by CAG for the extended version of this class
+		* @return string
+		*/
+		public function get_account_prefix()
+		{
+			  return $this->_account_prefix;
+		}
+		/**
 		* Set the port on which AD listens
 		* 
 		* Added by CAG for the extended version of this class
@@ -41,6 +69,8 @@ if( !class_exists( 'adLDAPE' ) ) {
 			// You can specifically overide any of the default configuration options setup above
 			if (count($options)>0){
 				if (array_key_exists("account_suffix",$options)){ $this->_account_suffix=$options["account_suffix"]; }
+				else { $this->_account_suffix=''; }
+				if (array_key_exists("account_prefix",$options)){ $this->_account_prefix=$options["account_prefix"]; }
 				if (array_key_exists("base_dn",$options)){ $this->_base_dn=$options["base_dn"]; }
 				if (array_key_exists("domain_controllers",$options)){ $this->_domain_controllers=$options["domain_controllers"]; }
 				if (array_key_exists("ad_username",$options)){ $this->_ad_username=$options["ad_username"]; }
@@ -51,6 +81,14 @@ if( !class_exists( 'adLDAPE' ) ) {
 				if (array_key_exists("recursive_groups",$options)){ $this->_recursive_groups=$options["recursive_groups"]; }
 				
 				/* Added by CAG for the extended version of this class */
+				if( is_array( $this->_domain_controllers ) ) {
+					foreach( $this->_domain_controllers as $k=>$d ) {
+						if( stristr( $d, 'ldaps://' ) ) {
+							$this->_use_ssl = true;
+							$this->_domain_controllers[$k] = str_ireplace( 'ldaps://', '', $d );
+						}
+					}
+				}
 				if (array_key_exists('ad_port',$options)){ $this->set_ad_port($options['ad_port']); }
 					elseif($this->_use_ssl) { $this->set_ad_port(636); }
 					else { $this->set_ad_port(389); }
@@ -157,7 +195,7 @@ if( !class_exists( 'adLDAPE' ) ) {
 			return ldap_get_entries($this->_conn, $sr);
 		}
 		
-		public function search_users( $field_to_search=null, $field_value='', $fields_to_show=null, $filter_group=null ) {
+		public function search_users( $field_to_search=null, $field_value='', $fields_to_show=null, $filter_group=null, $extra_query_info=null ) {
 			if( is_null( $fields_to_show ) )
 				$fields_to_show = array( 'samaccountname', 'displayname', 'mail', 'telephonenumber', 'department' );
 			
@@ -197,7 +235,11 @@ if( !class_exists( 'adLDAPE' ) ) {
 				if( 'cn' != $field_to_search ) 
 					$filter[] = '(cn=*)';
 			}
-			$filter = '(&' . implode( '', $filter ) . ')';
+			if( !empty( $extra_query_info ) )
+				$filter[] = $extra_query_info;
+			
+			$filter = '(& ' . implode( '', $filter ) . ' )';
+			error_log( '[AD Extended] Filter looks like: ' . $filter );
 			
 			$this->_set_last_query( $filter );
 			

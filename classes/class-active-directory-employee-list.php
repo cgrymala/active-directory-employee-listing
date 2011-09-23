@@ -233,17 +233,32 @@ if( !class_exists( 'active_directory_employee_list' ) ) {
 		 */
 		var $next_page_link 			= '<span class="next-page"><a href="%link%">Next page</a></span>';
 		/**
+		 * Conditions that indicate when a user should be ignored
+		 * @var array
+		 */
+		var $always_ignore				= null;
+		/**
+		 * The list of available AD fields from which the user can choose
+		 * @var array
+		 */
+		protected $_available_fields = array();
+		/**
 		 * The output template for an individual item in the list
 		 * @var string
 		 */
-		var $output_builder				= '<article id="adel-employee-%samaccountname%"> <p> [if mail] <a href="mailto:%mail%">%givenname% %sn% </a> [elseif displayname] %displayname% [else] %givenname% %sn% [endif] [if telephonenumber]<br/> %telephonenumber% [endif][if department]<br/> %department% [endif]</p> </article>';
+		var $output_builder				= '<article id="adel-employee-%samaccountname%"> [if mail] <figure class="employee-avatar"> <img src="%gravatar%"/> </figure> [elseif targetaddress] <figure class="employee-avatar"> <img src="%gravatar%"/> </figure> [endif] <p> [if mail] <a href="mailto:%mail%">%givenname% %sn% </a> [elseif targetaddress] <a href="mailto:%targetaddress%">%givenname% %sn% </a> [elseif displayname] %displayname% [else] %givenname% %sn% [endif] [if telephonenumber]<br/> %telephonenumber% [endif][if department]<br/> %department% [endif]</p> </article>';
+		/**
+		 * The default size of gravatar to retrieve
+		 * @var int
+		 */
+		var $gravatar_size = 100;
 		
 		/**
 		 * Build our object
 		 */
 		function __construct() {
 			$this->basepath = str_replace( array( basename( __FILE__ ), basename( dirname( __FILE__ ) ) ), '', realpath( __FILE__ ) );
-			$this->_set_transient_timeout( 24*60*60 );
+			$this->_set_transient_timeout( 60*60 );
 			$this->_get_options();
 			
 			add_action( 'init', array( &$this, '_init' ) );
@@ -261,6 +276,8 @@ if( !class_exists( 'active_directory_employee_list' ) ) {
 		}
 		
 		function register_widget() {
+			register_widget( 'ADEL_List_Widget' );
+			register_widget( 'ADEL_Single_Widget' );
 			return register_widget( 'active_directory_employee_list_widget' );
 		}
 		
@@ -348,6 +365,7 @@ if( !class_exists( 'active_directory_employee_list' ) ) {
 			}
 			if( !empty( $this->ad_group ) && !is_array( $this->ad_group ) )
 				$this->ad_group = array_map( 'trim', explode( ';', $this->ad_group ) );
+			
 			return $opt;
 		}
 		
@@ -411,7 +429,7 @@ if( !class_exists( 'active_directory_employee_list' ) ) {
 			if( is_object( $this->ldap ) )
 				return true;
 			
-			$this->_log( "\n<!-- Preparing to open a connection to the AD server. -->\n" );
+			/*$this->_log( "\n<!-- Preparing to open a connection to the AD server. -->\n" );*/
 			
 			try {
 				$this->ldap = new adLDAPE( array(
@@ -492,7 +510,9 @@ if( !class_exists( 'active_directory_employee_list' ) ) {
 				'postalcode'		=> 'ZIP code',
 				'st'				=> 'State, province or county',
 				'streetaddress'		=> 'First line of postal address',
+				'targetaddress'		=> 'Alternate email address',
 				'telephonenumber'	=> 'Office phone number',
+				'gravatar'			=> 'The URL to the gravatar image for the user (not AD)',
 			);
 			return $keys ? array_keys( $tags ) : $tags;
 		}
@@ -536,6 +556,102 @@ if( !class_exists( 'active_directory_employee_list' ) ) {
 			foreach( $keys as $k ) {
 				$array[$k] = $tmp[$k];
 			}
+		}
+		
+		/**
+		 * Build a couple of simple presets for the output builder
+		 * @return array an array of the simple presets
+		 */
+		function _get_output_presets() {
+			$parts = array();
+			$parts['name'] = '	[if givenname && sn]%givenname% %middlename% %sn%
+	[elseif cn]%cn%
+	[else]%displayname%[/endif]';
+			$parts['email'] = '	[if targetaddress]<p class="employee-mail"><a href="mailto:%targetaddress%">%targetaddress%</a></p>
+	[elseif mail]<p class="employee-mail"><a href="mailto:%mail%">%mail%</a></p>[/endif]';
+			$parts['phone'] = '	[if telephonenumber]<p class="employee-phone">' . __( 'Phone: ', $this->text_domain ) . '%telephonenumber%</p>[/endif]';
+			$parts['gravatar'] = '	[if mail || targetaddress]<img src="%gravatar%" class="employee-photo"/>[/endif]';
+			$parts['title'] = '	[if title]<p class="employee-title">%title%</p>[/endif]';
+			$parts['dept'] = '	[if department]<p class="employee-department">%department%</p>[/endif]';
+			
+			$presets = array();
+			$presets['namemail'] = array( 
+				'name' 		=> __('Name and email'), 
+				'output' 	=> '<div class="employee-list-item">
+	<p class="employee-name"><strong>' . $parts['name'] . '</strong></p>
+	' . $parts['email'] . '
+</div>' 
+			);
+			
+			$presets['namelinkmail'] = array( 
+				'name' 		=> __('Name linked to email'),
+				'output' 	=> '<div class="employee-list-item">
+	<p class="employee-name">
+		[if targetaddress]<a href="mailto:%targetaddress%">
+		[elseif mail]<a href="mailto:%mail%">
+		[/endif]' . $parts['name'] . '
+		[if targetaddress || mail]</a>[/endif]
+	</p>
+</div>' 
+			);
+			
+			$presets['namephone'] = array( 
+				'name' 		=> __('Name and phone'), 
+				'output' 	=> '<div class="employee-list-item">
+	<p class="employee-name">' . $parts['name'] . '</p>' . $parts['phone'] . '
+</div>' 
+			);
+			
+			$presets['gravnamemail'] = array( 
+				'name' 		=> __('Gravatar, name and email'), 
+				'output' 	=> '<div class="employee-list-item">' . $parts['gravatar'] . '
+	<p class="employee-name"><strong>' . $parts['name'] . '</strong></p>
+	' . $parts['email'] . '
+</div>' 
+			);
+			
+			$presets['gravnamemailphone'] = array( 
+				'name' 		=> __('Gravatar, name, email and phone'), 
+				'output' 	=> '<div class="employee-list-item">' . $parts['gravatar'] . '
+	<p class="employee-name"><strong>' . $parts['name'] . '</strong></p>
+	' . $parts['email'] . $parts['phone'] . '
+</div>' 
+			);
+			
+			$presets['namemailphone'] = array( 
+				'name' 		=> __('Name, email and phone'), 
+				'output' 	=> '<div class="employee-list-item">
+	<p class="employee-name"><strong>' . $parts['name'] . '</strong></p>
+	' . $parts['email'] . $parts['phone'] . '
+</div>' 
+			);
+			
+			$presets['nametitledept'] = array( 
+				'name' 		=> __('Name, title and dept'), 
+				'output' 	=> '<div class="employee-list-item">
+	<p class="employee-name"><strong>' . $parts['name'] . '</strong></p>' . $parts['title'] . $parts['dept'] . '
+</div>' 
+			);
+			
+			$presets['ntdmp'] = array( 
+				'name' 		=> __('Name, title, dept, email and phone'), 
+				'output' 	=> '<div class="employee-list-item">
+	<p class="employee-name"><strong>' . $parts['name'] . '</strong></p>
+	' . $parts['title'] . $parts['dept'] . $parts['email'] . $parts['phone'] . '
+</div>' 
+			);
+			
+			$presets['gntdmp'] = array( 
+				'name' 		=> __('Gravatar, name, title, dept, email and phone'), 
+				'output' 	=> '<div class="employee-list-item">' . $parts['gravatar'] . '
+	<p class="employee-name"><strong>' . $parts['name'] . '</strong></p>
+	' . $parts['title'] . $parts['dept'] . $parts['email'] . $parts['phone'] . '
+</div>' 
+			);
+			
+			$this->_need_to_retrieve = apply_filters( 'adel-need-to-retrieve', array( 'givenname', 'sn', 'cn', 'middlename', 'displayname', 'telephonenumber', 'mail', 'targetaddress', 'department', 'title' ) );
+			
+			return apply_filters( 'adel-simple-presets', $presets );
 		}
 	}
 }
