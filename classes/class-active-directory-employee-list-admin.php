@@ -123,7 +123,7 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 			/*add_action( 'update_option', 		array( $this, 'maybe_delete_option' 		), 99, 2 );*/
 			
 			if( isset( $_REQUEST['page'] ) && $this->settings_page == $_REQUEST['page'] ) {
-				if( ( !is_network_admin() && is_plugin_active_for_network( 'active-directory-employee-list/active-directory-employee-list.php' ) ) || ( $this->is_multinetwork && !$this->_is_mn_settings_page ) ) {
+				if( ( !is_network_admin() && is_multisite() && is_plugin_active_for_network( 'active-directory-employee-list/active-directory-employee-list.php' ) ) || ( $this->is_multinetwork && !$this->_is_mn_settings_page ) ) {
 					add_action( ( is_network_admin() ? 'network_admin_notices' : 'admin_notices' ), array( $this, 'options_override_message' ) );
 				}
 				wp_enqueue_script( 'ad-employee-list-admin' );
@@ -295,7 +295,7 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 			$fields = $this->_get_settings_fields();
 			$this->_get_settings();
 			
-			if( ( is_admin() && !is_network_admin() && is_plugin_active_for_network( 'active-directory-employee-list/active-directory-employee-list.php' ) ) || ( is_network_admin() && $this->is_multinetwork && !$this->_is_mn_settings_page ) ){
+			if( ( is_admin() && !is_network_admin() && is_multisite() && is_plugin_active_for_network( 'active-directory-employee-list/active-directory-employee-list.php' ) ) || ( is_network_admin() && $this->is_multinetwork && !$this->_is_mn_settings_page ) ){
 				$ignore_text = __( '<strong>Ignore this group of options?</strong>', $this->text_domain );
 				$fields[$this->settings_name]	= array_merge( array( 'ignore_settings_group' => $ignore_text ), $fields[$this->settings_name] );
 				$fields[$this->prefs_name]		= array_merge( array( 'ignore_prefs_group' => $ignore_text ), $fields[$this->prefs_name] );
@@ -983,6 +983,10 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 ?>
 		<div class="updated fade">
 <?php
+			if( is_multisite() && !function_exists( 'is_plugin_active_for_network' ) ) {
+				require_once( ABSPATH . '/wp-admin/includes/plugin.php' );
+			}
+			
 			if( is_network_admin() && $this->is_multinetwork && !$this->_is_mn_settings_page ) {
 				if( !$this->_is_primary_network ) {
 					$url = get_blog_details( 1 )->siteurl . '/wp-admin/network/' . 'sites.php?page=' . $this->settings_page;
@@ -991,7 +995,7 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 				}
 				
 				printf( __( '<p>Any options you set and save on this screen will override the global multi-network options that were set on the <a href="%s">multi-network options page</a>.</p><p>To avoid overriding a specific set of options, please check the "<strong>%s</strong>" box in the appropriate settings section.</p>', $this->text_domain ), $url, __( 'Ignore this group of options?', $this->text_domain ) );
-			} elseif( !is_network_admin() && is_plugin_active_for_network( 'active-directory-employee-list/active-directory-employee-list.php' ) ) {
+			} elseif( !is_network_admin() && is_multisite() && is_plugin_active_for_network( 'active-directory-employee-list/active-directory-employee-list.php' ) ) {
 				$url = network_admin_url( 'settings.php?page=' . $this->settings_page );
 				printf( __( '<p>Any options you set and save on this screen will override the network options that were set on the <a href="%s">network options page</a>.</p><p>To avoid overriding a specific set of options, please check the "<strong>%s</strong>" box in the appropriate settings section.</p>', $this->text_domain ), $url, __( 'Ignore this group of options?', $this->text_domain ) );
 			}

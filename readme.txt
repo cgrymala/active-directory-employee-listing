@@ -13,7 +13,7 @@ Retrieve lists of active directory users and display them in WordPress.
 This plugin allows you to query an active directory server to retrieve an optionally filtered list of users and display it as a list within a WordPress site. Some of the features of this plugin include:
 
 * Widget - a widget is provided, with a few filtering/formatting options, to allow you to display a user list in any widgetized area
-* Shortcode - a shortcode is provided, with all of the plugin's filtering/formatting options, to allow you to display a user list within any page or post
+* Shortcode - a shortcode is provided, with all of the plugin's filtering/formatting options, to allow you to display a user list within any page or post. The shortcode is `[ad-employee-list]`.
 * Output builder - a full-featured output builder is provided, allowing you to completely customize the format in which each user is displayed within the list. The output builder even allows conditional (if...elseif...else) statements.
 * Format options - in addition to the output builder (which is used for each individual user), the following formatting options are also available:
 	* before_list - Any HTML code you would like to appear before the list of employees. This code is output before the opening title_wrap tag.
@@ -78,6 +78,15 @@ To install as a mu-plugin:
 3. Upload all of the files inside of the active-directory-employee-list folder into your /wp-content/mu-plugins directory. If you upload the active-directory-employee-list folder itself, you will need to move active-directory-employee-list.php out of that folder so it resides directly in /wp-content/mu-plugins
 
 == Frequently Asked Questions ==
+
+= How do I use the shortcode? =
+
+The shortcode for this plugin is `[ad-employee-list]`. The shortcode accepts the following arguments:
+
+* fields - a comma-separated list of the fields you'd like to retrieve
+* group - the Active Directory security group or distribution group you'd like to retrieve (if you want to show a list of users)
+* username - the samaccountname of the user you would like to display (if you want to show a specific user). If the username is set, the group will be ignored; and only a single employee will appear.
+* include_search - whether or not to display the search form for the AD list
 
 = Where should I seek support if I find a bug or have a question? =
 
