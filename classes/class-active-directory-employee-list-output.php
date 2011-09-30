@@ -66,6 +66,9 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 			if( !empty( $fields ) )
 				$this->fields_to_show = $fields;
 			
+			if( !is_array( $this->fields_to_show ) )
+				$this->fields_to_show = array_map( 'trim', explode( ';', $this->fields_to_show ) );
+			
 			if( in_array( 'gravatar', $this->fields_to_show ) ) {
 				unset( $this->fields_to_show[array_search( 'gravatar', $this->fields_to_show )] );
 				if( !in_array( 'mail', $this->fields_to_show ) )
@@ -355,6 +358,9 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 			
 			$fields_to_show = $this->fields_to_show;
 			
+			if( !is_array( $fields_to_show ) )
+				$fields_to_show = array_map( 'trim', explode( ';', $fields_to_show ) );
+			
 			if( !in_array( 'samaccountname', $fields_to_show ) )
 				array_unshift( $fields_to_show, 'samaccountname' );
 			if( !empty( $this->order_by ) && !in_array( $this->order_by, $fields_to_show ) )
@@ -464,6 +470,9 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 			$i = 0;
 			
 			$us = array();
+			if( empty( $users ) )
+				$users = array();
+			
 			foreach( $users as $user ) {
 				if( is_array( $user ) ) {
 					if( array_key_exists( 'samaccountname', $user ) ) {
