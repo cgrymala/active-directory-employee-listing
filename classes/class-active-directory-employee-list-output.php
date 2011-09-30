@@ -25,10 +25,35 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 		 * @default array()
 		 */
 		var $_replacement_tags 			= array();
+		/**
+		 * A switch to determine whether we've filtered this content already
+		 */
+		var $already_filtered 			= false;
 		
 		function _init() {
 			parent::_init();
 			$this->add_shortcode();
+			add_filter( 'the_content', array( &$this, 'display_search_results' ), 1 );
+			add_action( 'wp_print_styles', array( &$this, 'print_styles' ), 1 );
+		}
+		
+		/**
+		 * Enqueue the stylesheet
+		 */
+		function print_styles() {
+			wp_enqueue_style( 'active-directory-employee-list', plugins_url( '/css/active-directory-employee-list.css', dirname(__FILE__) ), array(), 0.3, 'all' );
+		}
+		
+		/**
+		 * Replace the content of the current page with the search results from this plugin
+		 */
+		function display_search_results( $content ) {
+			if( !isset( $_REQUEST['adeq'] ) || $this->already_filtered )
+				return $content;
+			
+			$this->already_filtered = true;
+			remove_filter( 'the_content', 'wpautop' );
+			return $this->show_employees(null,array(),array(),false);
 		}
 		
 		/**
@@ -89,17 +114,17 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 				$employees = $this->get_employees();
 			}
 			if( empty( $employees ) || !is_array( $employees ) )
-				return array( 'noresults' => __( 'No employees could be found matching the criteria specified', $this->text_domain ) );
+				return array( 'noresults' => apply_filters( 'adel-no-results-text', __( 'No employees could be found matching the criteria specified. Please try a different search. If you searched for a person\'s first name and last name together, please try searching for just the first or last name.', $this->text_domain ) ) );
 			if( !empty( $this->order_by ) )
 				$this->_sort_by_val( $employees, $this->order_by );
 			
-			foreach( $employees as $username=>$e ) {
+			/*foreach( $employees as $username=>$e ) {
 				if( $this->_ignore_this_user( $e, $username ) )
 					continue;
 				$output[$username] = $this->_replace_tags( $e, $username );
-			}
+			}*/
 			
-			return $output;
+			return $employees;
 		}
 		
 		/**
@@ -246,6 +271,9 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 				$page = 1;
 			
 			$total = count( $employees );
+			if( 0 == $total ) {
+				return $output;
+			}
 			
 			if( 0 <= $this->results_per_page )
 				$employees = array_slice( $employees, ( ( $page - 1 ) * $this->results_per_page ), $this->results_per_page, true );
@@ -253,6 +281,7 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 				$this->results_per_page = $total;
 			
 			foreach( $employees as $k=>$e ) {
+				$e = $this->_replace_tags( $e, $e['samaccountname'] );
 				if( !empty( $this->item_wrap ) && is_array( $employees[$k] ) ) {
 					$fields = array_map( array( $this, '_map_fields_to_vars' ), array_keys( $employees[$k] ) );
 					$repl = array_map( array( $this, 'sanitize_html_id_class' ), $employees[$k] );
@@ -551,6 +580,8 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 		 * @uses active_directory_employee_list_output::_handle_if_else()
 		 */
 		function _replace_tags( $user, $username=null ) {
+			if( empty( $user ) || !is_array( $user ) )
+				return $user;
 			$tags = array();
 			foreach( $this->_replacement_tags as $t ) {
 				if( 'gravatar' == $t ) {
@@ -656,6 +687,9 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 		 * Handle a single condition in an if/else statement
 		 */
 		protected function _handle_if_else_single( $c=null, $user=array() ) {
+			if( empty( $user ) || !is_array( $user ) )
+				return false;
+			
 			$c = trim( $c );
 			if( strstr( $c, '=' ) ) {
 				list( $key, $val ) = explode( '=', $c );
