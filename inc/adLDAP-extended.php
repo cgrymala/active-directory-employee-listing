@@ -253,7 +253,9 @@ if( !class_exists( 'adLDAPE' ) ) {
 			$this->_set_last_query( $filter );
 			
 			$sr = ldap_search( $this->_conn, $this->_base_dn, $filter/*, $fields_to_show*/ );
-			error_log( '[AD LDAP Debug]: Search Filter: ' . print_r( $filter, true ) );
+			if( defined( 'WP_DEBUG' ) && WP_DEBUG )
+				error_log( '[AD LDAP Debug]: Search Filter: ' . print_r( $filter, true ) );
+			
 			return ldap_get_entries($this->_conn, $sr);
 		}
 		
