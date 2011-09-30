@@ -1,0 +1,31 @@
+ul.adel-list {
+	float: none;
+	clear: both;
+	list-style: none;
+	padding: 0;
+	margin: 0;
+}
+
+ul.adel-list>li {
+	list-style: none;
+	clear: both;
+	margin: 0 0 1em;
+	border-bottom: 1px dotted #666;
+}
+
+.adel-list .employee-photo {
+	float: right;
+	margin: 0 0 1em 1em;
+}
+
+.adel-list .employee-wrap {
+	float: left;
+}
+
+.adel-list p, 
+.adel-list h3, 
+.adel-list ul, 
+.adel-list div {
+	padding: 0;
+	margin-bottom: .25em;
+}
