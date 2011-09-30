@@ -6,7 +6,6 @@ if( !class_exists( 'adLDAPE' ) ) {
 	class adLDAPE extends adLDAP {
 		var $_last_query	= null;
 		var $_ad_port		= 389;
-		
 		/**
 		* The account prefix for your domain, can be set when the class is invoked
 		* 
@@ -14,6 +13,7 @@ if( !class_exists( 'adLDAPE' ) ) {
 		* @var string
 		*/   
 		protected $_account_prefix = "";
+		
 		/**
 		* Set the account prefix
 		* 
@@ -25,6 +25,7 @@ if( !class_exists( 'adLDAPE' ) ) {
 		{
 			  $this->_account_prefix = $_account_prefix;
 		}
+	
 		/**
 		* Get the account prefix
 		* 
@@ -35,6 +36,7 @@ if( !class_exists( 'adLDAPE' ) ) {
 		{
 			  return $this->_account_prefix;
 		}
+		
 		/**
 		* Set the port on which AD listens
 		* 
@@ -117,6 +119,12 @@ if( !class_exists( 'adLDAPE' ) ) {
 				/* Port variable added by CAG for extended class. Original version did not use port at all */
 				$this->_conn = ldap_connect($dc, $this->_ad_port);
 			}
+			
+			if( !is_resource( $this->_conn ) ) {
+				throw new adLDAPException( 'Connection to Active Directory failed for some reason. The connection is not evaluating as a usable resource. AD said: ' . $this->get_last_error());
+				error_log( '[AD LDAP]: The connection is not a resource, so no bind was attempted.' );
+				return false;
+			}
 				   
 			// Set some ldap options for talking to AD
 			ldap_set_option($this->_conn, LDAP_OPT_PROTOCOL_VERSION, 3);
@@ -133,8 +141,10 @@ if( !class_exists( 'adLDAPE' ) ) {
 					if ($this->_use_ssl && !$this->_use_tls){
 						// If you have problems troubleshooting, remove the @ character from the ldap_bind command above to get the actual error message
 						throw new adLDAPException('Bind to Active Directory failed. Either the LDAPs connection failed or the login credentials are incorrect. AD said: ' . $this->get_last_error());
+						return false;
 					} else {
 						throw new adLDAPException('Bind to Active Directory failed. Check the login credentials and/or server details. AD said: ' . $this->get_last_error());
+						return false;
 					}
 				}
 			}
@@ -238,12 +248,12 @@ if( !class_exists( 'adLDAPE' ) ) {
 			if( !empty( $extra_query_info ) )
 				$filter[] = $extra_query_info;
 			
-			$filter = '(& ' . implode( '', $filter ) . ' )';
-			error_log( '[AD Extended] Filter looks like: ' . $filter );
+			$filter = '(&' . implode( '', $filter ) . ')';
 			
 			$this->_set_last_query( $filter );
 			
-			$sr = ldap_search( $this->_conn, $this->_base_dn, $filter, $fields_to_show );
+			$sr = ldap_search( $this->_conn, $this->_base_dn, $filter/*, $fields_to_show*/ );
+			error_log( '[AD LDAP Debug]: Search Filter: ' . print_r( $filter, true ) );
 			return ldap_get_entries($this->_conn, $sr);
 		}
 		
