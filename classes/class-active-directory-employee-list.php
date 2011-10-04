@@ -258,7 +258,7 @@ if( !class_exists( 'active_directory_employee_list' ) ) {
 		 */
 		function __construct() {
 			$this->basepath = str_replace( array( basename( __FILE__ ), basename( dirname( __FILE__ ) ) ), '', realpath( __FILE__ ) );
-			$this->_set_transient_timeout( 60*60 );
+			/*$this->_set_transient_timeout( 60*60 );*/
 			$this->_get_options();
 			
 			add_action( 'init', array( &$this, '_init' ) );
@@ -452,6 +452,11 @@ if( !class_exists( 'active_directory_employee_list' ) ) {
 		 */
 		function get_all_groups() {
 			$transname = 'adel_available_groups';
+			if( 0 === $this->transient_timeout ) {
+				delete_site_transient( $transname );
+				delete_transient( $transname );
+			}
+			
 			if( is_network_admin() && ( false !== ( $g = get_site_transient( $transname ) ) ) )
 				return $g;
 			elseif( is_admin() && ( false !== ( $g = get_transient( $transname ) ) ) )
@@ -467,10 +472,13 @@ if( !class_exists( 'active_directory_employee_list' ) ) {
 				return null;
 			}
 			
-			if( is_network_admin() )
+			if( is_network_admin() ) {
+				delete_site_transient( $transname );
 				set_site_transient( $transname, $g, $this->transient_timeout );
-			elseif( is_admin() )
+			} elseif( is_admin() ) {
+				delete_transient( $transname );
 				set_transient( $transname, $g, $this->transient_timeout );
+			}
 			
 			return $g;
 		}
@@ -542,14 +550,15 @@ if( !class_exists( 'active_directory_employee_list' ) ) {
 		 * @return array the sorted array
 		 */
 		function _sort_by_val( &$array, $sort_field, $order='asc' ) {
+			error_log( '[ADEL Notice]: Preparing to sort the array of users by ' . $sort_field . ' in ' . $order . ' order' );
 			$tmp = array();
 			foreach( $array as $key=>$sub ) {
 				$tmp[$key] = array_key_exists( $sort_field, $sub ) ? $sub[$sort_field] : null;
 			}
 			if( 'desc' === $order )
-				arsort( $tmp );
+				arsort( $tmp, SORT_STRING );
 			else
-				asort( $tmp );
+				asort( $tmp, SORT_STRING );
 			$keys = array_keys( $tmp );
 			$tmp = $array;
 			$array = array();

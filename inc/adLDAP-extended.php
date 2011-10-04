@@ -198,7 +198,7 @@ if( !class_exists( 'adLDAPE' ) ) {
 			
 			$filter = '(&(objectClass=user)(samaccounttype=' . ADLDAP_NORMAL_ACCOUNT . ')(objectCategory=person)' . ( !is_null( $group ) ? '(memberof=cn=' . $group . ',' . $this->_base_dn . ')' : '' ) . '(cn=' . $search . '))';
 			
-			$sr = ldap_search( $this->_conn, $this->_base_dn, $filter, $fields );
+			$sr = ldap_search( $this->_conn, $this->_base_dn, $filter );
 			
 			$this->_set_last_query( $filter );
 			

@@ -396,6 +396,9 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 				array_push( $fields_to_show, $this->order_by );
 			
 			$hashkey = 'adel_group_' . md5( implode( ';', $this->ad_group ) . $fields_to_show );
+			if( 0 === $this->transient_timeout )
+				delete_transient( $hashkey );
+			
 			$tmp = get_transient( $hashkey );
 			if( false !== $tmp )
 				return $this->employee_list = $tmp;
@@ -415,6 +418,7 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 				$e = $this->ldap->get_group_users_info( null, $fields_to_show );
 			}
 			$this->employee_list = $this->map_group_members( $e );
+			delete_transient( $hashkey );
 			set_transient( $hashkey, $this->employee_list, $this->transient_timeout );
 			return $this->employee_list;
 		}
@@ -438,6 +442,9 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 			$fields_to_show = $this->fields_to_show;
 			
 			$hashkey = 'adel_user_' . md5( $username . $fields_to_show );
+			if( 0 === $this->transient_timeout )
+				delete_transient( $hashkey );
+			
 			$tmp = get_transient( $hashkey );
 			if( false !== $tmp )
 				return $tmp;
@@ -456,6 +463,7 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 			
 			$e = $this->map_group_members( $e );
 			
+			delete_transient( $hashkey );
 			set_transient( $hashkey, $e, $this->transient_timeout );
 			
 			return $e;
@@ -831,9 +839,11 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 				array_push( $fields_to_show, $this->order_by );
 			
 			$hashkey = 'adel_search_' . md5( 'k=' . ( is_array( $keyword ) ? implode( '|', $keyword ) : $keyword ) . 'f=' . ( is_array( $field ) ? implode( '|', $field ) : $field ) . 'fs=' . ( is_array( $fields_to_show ) ? implode( '|', $fields_to_show ) : $fields_to_show ) . ( !empty($group) ? 'g=' . implode( ';', $group ) : '' ) );
+			if( 0 === $this->transient_timeout )
+				delete_transient( $hashkey );
+			
 			$e = get_transient( $hashkey );
 			if( false !== $e ) {
-				/*error_log( '[ADEL Notice]: The list of users was found in the transients data, so that is being returned.' );*/
 				return $e;
 			}
 			
@@ -846,6 +856,7 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 				$d = $this->map_group_members( $d, $g );
 				$e = array_merge( $e, $d );
 			}
+			delete_transient( $hashkey );
 			set_transient( $hashkey, $e, $this->transient_timeout );
 			
 			return $e;
