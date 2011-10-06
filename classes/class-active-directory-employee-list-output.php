@@ -817,6 +817,12 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 			
 			if( !empty( $group ) && !is_array( $group ) )
 				$group = array_map( 'trim', explode( ';', $group ) );
+			if( empty( $group ) )
+				$group = array();
+			$group = array_filter( $group );
+			if( empty( $group ) )
+				$group = $this->ad_group;
+			
 			if( empty( $field ) ) {
 				$field = $this->fields_to_show;
 			}

@@ -550,7 +550,7 @@ if( !class_exists( 'active_directory_employee_list' ) ) {
 		 * @return array the sorted array
 		 */
 		function _sort_by_val( &$array, $sort_field, $order='asc' ) {
-			error_log( '[ADEL Notice]: Preparing to sort the array of users by ' . $sort_field . ' in ' . $order . ' order' );
+			/*error_log( '[ADEL Notice]: Preparing to sort the array of users by ' . $sort_field . ' in ' . $order . ' order' );*/
 			$tmp = array();
 			foreach( $array as $key=>$sub ) {
 				$tmp[$key] = array_key_exists( $sort_field, $sub ) ? $sub[$sort_field] : null;
