@@ -13,7 +13,7 @@ ul.adel-list>li {
 	border-bottom: 1px dotted #666;
 }
 
-.adel-list .employee-photo {
+.adel-list .avatar {
 	float: right;
 	margin: 0 0 1em 1em;
 }
@@ -28,4 +28,8 @@ ul.adel-list>li {
 .adel-list div {
 	padding: 0;
 	margin-bottom: .25em;
+}
+
+.adel-form fieldset {
+	border: 1px dotted #333;
 }

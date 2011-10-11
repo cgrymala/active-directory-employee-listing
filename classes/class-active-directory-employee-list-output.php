@@ -41,19 +41,20 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 		 * Enqueue the stylesheet
 		 */
 		function print_styles() {
-			wp_enqueue_style( 'active-directory-employee-list', plugins_url( '/css/active-directory-employee-list.css', dirname(__FILE__) ), array(), 0.3, 'all' );
+			wp_enqueue_style( 'active-directory-employee-list', plugins_url( '/css/active-directory-employee-list.css', dirname(__FILE__) ), array(), '0.3.1', 'all' );
 		}
 		
 		/**
 		 * Replace the content of the current page with the search results from this plugin
 		 */
 		function display_search_results( $content ) {
-			if( !isset( $_REQUEST['adeq'] ) || $this->already_filtered )
+			if( !isset( $_REQUEST['adeq'] ) || $this->already_filtered || stristr( $content, 'class="adel-list"' ) )
 				return $content;
 			
 			$this->already_filtered = true;
 			remove_filter( 'the_content', 'wpautop' );
-			return $this->show_employees(null,array(),array(),false);
+			remove_filter( 'the_content', array( &$this, 'display_search_results' ), 1 );
+			return $content . $this->show_employees( null, array(), array(), false, true, true, false );
 		}
 		
 		/**
@@ -107,11 +108,15 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 			
 			$output = array();
 			
+			/*error_log( '[ADEL Debug]: We are about to query for the list of employees' );*/
+			
 			if( isset( $_REQUEST['adeq'] ) && !empty( $_REQUEST['adeq'] ) ) {
 				$this->_log( $group, $_REQUEST['adeq'], print_r( $group, true ) );
 				$employees = $this->search_employees( $_REQUEST['adeq'], $this->fields_to_show, $this->ad_group );
+				/*error_log( '[ADEL Debug]: We have retrieved a list of employees by performing a search' );*/
 			} else {
 				$employees = $this->get_employees();
+				/*error_log( '[ADEL Debug]: We have retrieved a list of employees by using the get_employees() function' );*/
 			}
 			if( empty( $employees ) || !is_array( $employees ) )
 				return array( 'noresults' => apply_filters( 'adel-no-results-text', __( 'No employees could be found matching the criteria specified. Please try a different search. If you searched for a person\'s first name and last name together, please try searching for just the first or last name.', $this->text_domain ) ) );
@@ -275,6 +280,8 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 				return $output;
 			}
 			
+			/*error_log( '[ADEL Debug]: We should be displaying ' . $this->results_per_page . ' entries on each page.' );*/
+			
 			if( 0 <= $this->results_per_page )
 				$employees = array_slice( $employees, ( ( $page - 1 ) * $this->results_per_page ), $this->results_per_page, true );
 			else
@@ -379,9 +386,11 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 		 * @uses active_directory_employee_list::map_group_members()
 		 */
 		function get_employees() {
+			/*error_log( '[ADEL Debug]: We have entered the get_employees() function' );*/
 			if( isset( $this->employee_list ) )
 				return $this->employee_list;
 			
+			/*error_log( '[ADEL Debug]: The list of employees was not pre-populated, so we are building it' );*/
 			if( !empty( $this->ad_group ) && !is_array( $this->ad_group ) )
 				$this->ad_group = array_map( 'trim', explode( ';', $this->ad_group ) );
 			
@@ -411,12 +420,15 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 			if( !empty( $this->ad_group ) ) {
 				$e = array();
 				foreach( $this->ad_group as $g ) {
+					/*error_log( '[ADEL Debug]: We are in the get_employees() function preparing to retrieve users in the ' . $g . ' group.' );*/
 					$d = $this->ldap->get_group_users_info( $g, $fields_to_show );
+					/*error_log( '[ADEL Debug]: We successfully retrieved the list of users in this group, and are preparing to merge that with the users we have retrieved from other groups.' );*/
 					$e = array_merge( $e, $d );
 				}
 			} else {
 				$e = $this->ldap->get_group_users_info( null, $fields_to_show );
 			}
+			/*error_log( '[ADEL Debug]: We are preparing to map group members' );*/
 			$this->employee_list = $this->map_group_members( $e );
 			delete_transient( $hashkey );
 			set_transient( $hashkey, $this->employee_list, $this->transient_timeout );
@@ -594,7 +606,8 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 			foreach( $this->_replacement_tags as $t ) {
 				if( 'gravatar' == $t ) {
 					$m = array_key_exists( 'targetaddress', $user ) && !empty( $user['targetaddress'] ) ? $user['targetaddress'] : $user['mail'];
-					$tags[] = 'http://www.gravatar.com/avatar/' . md5( trim( strtolower( $m ) ) ) . '?size=' . $this->gravatar_size;
+					/*$tags[] = 'http://www.gravatar.com/avatar/' . md5( trim( strtolower( $m ) ) ) . '?d=identicon&size=' . $this->gravatar_size;*/
+					$tags[] = get_avatar( strtolower( $m ), $this->gravatar_size );
 				} elseif( array_key_exists( strtolower( $t ), $user ) ) {
 					$tags[] = $user[$t];
 				} else {
@@ -625,8 +638,6 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 			
 			$pattern = '\[if([^\]]+)\](.+)\[\/*end\s*if\]';
 			preg_match_all( '/' . $pattern . '/sU', $content, $gmatches, PREG_SET_ORDER );
-			
-			/*$this->_log( "\n<!-- Global matches look like: \n", $gmatches, "\n-->\n" );*/
 			
 			foreach( $gmatches as $match ) {
 				$pattern = '\[(if|elseif|else)(.*?)\]([^\[]+)';
@@ -760,6 +771,9 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 		 */
 		function add_shortcode() {
 			add_shortcode( 'ad-employee-list', array( &$this, 'render_shortcode' ) );
+			add_shortcode( 'ad-employee-simple-search', array( &$this, 'simple_search_form' ) );
+			add_shortcode( 'ad-employee-advanced-search', array( &$this, 'advanced_search_form' ) );
+			add_shortcode( 'ad-employee-custom-search', array( &$this, 'custom_search_form' ) );
 		}
 		
 		/**
@@ -770,7 +784,12 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 		function render_shortcode( $atts ) {
 			$content = '';
 			
-			extract( shortcode_atts( array( 'fields' => array(), 'group' => null, 'username' => null, 'include_search' => true ), $atts ) );
+			/*error_log( '[ADEL Debug]: The atts array currently looks like: ' . print_r( $atts, true ) );*/
+			
+			$args = shortcode_atts( array( 'fields' => array(), 'group' => null, 'username' => null, 'include_search' => true, 'results_per_page' => null ), $atts );
+			/*error_log( '[ADEL Debug]: The parsed shortcode atts look like: ' . print_r( $args, true ) );*/
+			extract( $args );
+			
 			$atts = shortcode_atts( array_fill_keys( $this->_get_format_option_list(), null ), $atts );
 			
 			if( !is_array( $fields ) )
@@ -781,6 +800,10 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 				$group = $this->ad_group;
 			if( !empty( $group ) && !is_array( $group ) )
 				$group = array_map( 'trim', explode( ';', $group ) );
+			if( !is_null( $results_per_page ) && is_numeric( $results_per_page ) ) {
+				/*error_log( '[ADEL Debug]: We are setting the results_per_page property to ' . $results_per_page );*/
+				$this->results_per_page = $results_per_page;
+			}
 			
 			$formatting = array();
 			foreach( $this->_get_format_option_list() as $opt ) {
@@ -873,7 +896,7 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 		 * Allow users to search each individual field that's being retrieved
 		 */
 		function advanced_search_form( $fields=null, $echo=false ) {
-			if( is_null( $fields ) ) {
+			if( empty( $fields ) ) {
 				if( empty( $this->fields_to_show ) )
 					$this->_get_options();
 				$fields = $this->fields_to_show;
@@ -897,6 +920,17 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 			<input class="adel-search-submit" type="submit" value="' . __( 'Search', $this->text_domain ) . '"/>
 		</p>
 	</form>';
+			
+			$form = apply_filters( 'ad-employee-advanced-search', $form );
+			
+			return $echo ? print( $form ) : $form;
+		}
+		
+		function build_search_field( $f ) {
+			if( array_key_exists( $f, $this->_available_fields ) )
+				return '<label for="adel-search-criteria-' . $f . '">' . $this->_available_fields[$f] . '</label><input type="text" name="' . $f . '" id="adel-search-criteria-' . $f . '">';
+			
+			return '';
 		}
 		
 		/**
@@ -912,7 +946,13 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 			<input class="adel-search-submit" type="submit" value="' . __( 'Search', $this->text_domain ) . '"/>
 		</p>
 	</form>';
+			$form = apply_filters( 'ad-employee-simple-search', $form );
 			return $echo ? print( $form ) : $form;
+		}
+		
+		function custom_search_form() {
+			$form = apply_filters( 'ad-employee-custom-search', '' );
+			return $form;
 		}
 		
 	}

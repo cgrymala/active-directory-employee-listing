@@ -119,7 +119,7 @@ if( !class_exists( 'active_directory_employee_list' ) ) {
 		 * The amount of time for which a transient option should be stored in the WordPress database
 		 * @var string
 		 */
-		protected $transient_timeout	= 0;
+		protected $transient_timeout	= 600;
 		/**
 		 * The adLDAP object used to authenticate against and query the server
 		 * @private
@@ -365,6 +365,8 @@ if( !class_exists( 'active_directory_employee_list' ) ) {
 			}
 			if( !empty( $this->ad_group ) && !is_array( $this->ad_group ) )
 				$this->ad_group = array_map( 'trim', explode( ';', $this->ad_group ) );
+			if( isset( $_GET['ad_group'] ) )
+				$this->ad_group = $_GET['ad_group'];
 			
 			return $opt;
 		}
