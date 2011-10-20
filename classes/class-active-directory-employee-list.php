@@ -259,7 +259,6 @@ if( !class_exists( 'active_directory_employee_list' ) ) {
 		function __construct() {
 			$this->basepath = str_replace( array( basename( __FILE__ ), basename( dirname( __FILE__ ) ) ), '', realpath( __FILE__ ) );
 			/*$this->_set_transient_timeout( 60*60 );*/
-			$this->_get_options();
 			
 			add_action( 'init', array( &$this, '_init' ) );
 			

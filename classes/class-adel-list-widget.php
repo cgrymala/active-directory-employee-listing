@@ -38,6 +38,8 @@ if( !class_exists( 'ADEL_List_Widget' ) ) {
 		}
 		
 		function widget( $args, $instance ) {
+			$this->adelObj->_get_options();
+			
 			$this->adelObj->output_built = null;
 			$this->adelObj->employee_list = null;
 			$_REQUEST['widget_adeq'] = isset( $_REQUEST['widget_adeq'] ) ? $_REQUEST['widget_adeq'] : '';
@@ -95,6 +97,8 @@ if( !class_exists( 'ADEL_List_Widget' ) ) {
 		}
 		
 		function form( $instance ) {
+			$this->adelObj->_get_options();
+			
 			/**
 			 * Fields are:
 			 * + title

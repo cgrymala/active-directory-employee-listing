@@ -782,6 +782,8 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 		 * @return string the rendered code
 		 */
 		function render_shortcode( $atts ) {
+			$this->_get_options();
+			
 			$content = '';
 			
 			/*error_log( '[ADEL Debug]: The atts array currently looks like: ' . print_r( $atts, true ) );*/

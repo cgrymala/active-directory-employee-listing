@@ -47,6 +47,8 @@ if( !class_exists( 'ADEL_Single_Widget' ) ) {
 		}
 		
 		function widget( $args, $instance ) {
+			$this->adelObj->_get_options();
+			
 			$this->adelObj->output_built = null;
 			$this->adelObj->employee_list = null;
 			$_REQUEST['widget_adeq'] = isset( $_REQUEST['widget_adeq'] ) ? $_REQUEST['widget_adeq'] : '';
@@ -98,6 +100,8 @@ if( !class_exists( 'ADEL_Single_Widget' ) ) {
 		}
 		
 		function form( $instance ) {
+			$this->adelObj->_get_options();
+			
 			/**
 			 * Fields are:
 			 * + title
@@ -129,7 +133,7 @@ if( !class_exists( 'ADEL_Single_Widget' ) ) {
 ?>
         </select>
     </p>
-    <p class="show-if-js"><a class="adel-widget-controls-show-advanced" href="#<?php echo $this->get_field_id( 'advanced-opts' ) ?>"><?php _e( 'Advanced formatting options', $this->adel_obj->text_domain ) ?></a></p>
+    <p class="show-if-js"><a class="adel-widget-controls-show-advanced" href="#<?php echo $this->get_field_id( 'advanced-opts' ) ?>"><?php _e( 'Advanced formatting options', $this->adelObj->text_domain ) ?></a></p>
     <div class="hide-if-js" id="<?php echo $this->get_field_id( 'advanced-opts' ) ?>">
         <p>
             <label for="<?php echo $this->get_field_id( 'fields' ) ?>"><?php _e( 'Fields to display: ', $this->adelObj->text_domain ) ?></label> 
