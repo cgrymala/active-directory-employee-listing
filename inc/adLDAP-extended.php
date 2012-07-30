@@ -287,6 +287,10 @@ if( !class_exists( 'adLDAPE' ) ) {
 		protected function _set_last_query( $q ) {
 			$this->_last_query = $q;
 		}
+		
+		function set_ldap_option( $name, $value ) {
+			ldap_set_option( $this->_conn, $name, $value );
+		}
 	}
 }
 ?>

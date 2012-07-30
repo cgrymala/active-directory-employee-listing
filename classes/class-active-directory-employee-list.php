@@ -425,6 +425,7 @@ if( !class_exists( 'active_directory_employee_list' ) ) {
 		
 		/**
 		 * Instantiate our adLDAPE object and perform initial bind
+		 * @uses do_action() to run the adel_set_ldap_options action to set any global LDAP options after connect
 		 */
 		function open_ldap() {
 			if( is_object( $this->ldap ) )
@@ -442,6 +443,8 @@ if( !class_exists( 'active_directory_employee_list' ) ) {
 					'use_tls'				=> $this->_use_tls,
 					'account_suffix'		=> $this->_account_suffix,
 				) );
+				if ( is_object( $this->ldap ) )
+					do_action( 'adel_set_ldap_options', $this->ldap );
 			} catch( Exception $e ) {
 				return $e->getMessage();
 			}

@@ -54,7 +54,7 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 			$this->already_filtered = true;
 			remove_filter( 'the_content', 'wpautop' );
 			remove_filter( 'the_content', array( &$this, 'display_search_results' ), 1 );
-			return $content . apply_filter( 'adel_search_results', $this->show_employees( null, array(), array(), false, true, true, false ) );
+			return $content . apply_filters( 'adel_search_results', $this->show_employees( null, array(), array(), false, true, true, false ) );
 		}
 		
 		/**
@@ -859,6 +859,10 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 				array_unshift( $field, 'samaccountname' );
 			if( !is_array( $keyword ) )
 				$keyword = array_fill( 0, count( $field ), $keyword );
+			
+			foreach( $keyword as $k=>$v ) {
+				$keyword[$k] = str_replace( "'", "''", $v );
+			}
 			
 			if( !is_array( $this->fields_to_show ) )
 				return array();
