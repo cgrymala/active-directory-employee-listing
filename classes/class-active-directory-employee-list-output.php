@@ -788,7 +788,7 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 			
 			/*error_log( '[ADEL Debug]: The atts array currently looks like: ' . print_r( $atts, true ) );*/
 			
-			$args = shortcode_atts( array( 'fields' => array(), 'group' => null, 'username' => null, 'include_search' => true, 'results_per_page' => null ), $atts );
+			$args = shortcode_atts( array( 'fields' => array(), 'group' => null, 'username' => null, 'include_search' => true, 'results_per_page' => null, 'max_results' => null ), $atts );
 			/*error_log( '[ADEL Debug]: The parsed shortcode atts look like: ' . print_r( $args, true ) );*/
 			extract( $args );
 			
@@ -802,6 +802,18 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 				$group = $this->ad_group;
 			if( !empty( $group ) && !is_array( $group ) )
 				$group = array_map( 'trim', explode( ';', $group ) );
+			if ( ! empty( $max_results ) && is_numeric( $max_results ) ) {
+				$this->open_ldap();
+				
+				$this->ldap->get_ldap_option( LDAP_OPT_SIZELIMIT, $old_max_results );
+				
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG )
+					error_log( '[ADEL Debug]: The size limit option was set to ' . $old_max_results . ' and we are setting it to ' . $max_results );
+					
+				$this->ldap->set_ldap_option( LDAP_OPT_SIZELIMIT, $max_results );
+			} else {
+				error_log( '[ADEL Debug]: The max results att was empty' );
+			}
 			if( !is_null( $results_per_page ) && is_numeric( $results_per_page ) ) {
 				/*error_log( '[ADEL Debug]: We are setting the results_per_page property to ' . $results_per_page );*/
 				$this->results_per_page = $results_per_page;
@@ -816,6 +828,9 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 			$content .= !is_null( $username ) ? 
 				$this->show_employee( $username, $fields, $formatting, false ) : 
 				$this->show_employees( $group, $fields, $formatting, false, $include_search );
+			
+			if ( isset( $old_max_results ) && ! empty( $old_max_results ) && is_numeric( $old_max_results ) )
+				$this->ldap->set_ldap_option( LDAP_OPT_SIZELIMIT, $old_max_results );
 			
 			return $content;
 		}

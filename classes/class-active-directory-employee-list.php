@@ -262,6 +262,16 @@ if( !class_exists( 'active_directory_employee_list' ) ) {
 			
 			add_action( 'init', array( &$this, '_init' ) );
 			
+			/**
+			 * Move this call out of __construct() to avoid deprecated notices
+			 */
+			add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_scripts_and_styles' ) );
+		}
+		
+		/**
+		 * Register our scripts and styles for this plugin
+		 */
+		function enqueue_scripts_and_styles() {
 			wp_register_script( 'ad-employee-list-admin', plugins_url( 'js/active-directory-employee-list.admin.js', dirname( __FILE__ ) ), array( 'jquery', 'post' ), '0.3', true );
 			wp_register_style( 'ad-employee-list-admin-style', plugins_url( 'css/active-directory-employee-list.admin.css', dirname( __FILE__ ) ), array( 'widgets' ), '0.3', 'all' );
 		}

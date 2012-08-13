@@ -88,7 +88,7 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 		 * @uses active_directory_employee_list::__construct()
 		 */
 		function __construct() {
-			if( !function_exists( 'ldap_connect' ) ) {
+			if( ! $this->_is_ldap_supported() ) {
 				add_action( 'admin_notices', 			array( $this, '_ldap_not_supported' ) );
 				add_action( 'network_admin_notices', 	array( $this, '_ldap_not_supported' ) );
 				return;
@@ -126,11 +126,23 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 				if( ( !is_network_admin() && is_multisite() && is_plugin_active_for_network( 'active-directory-employee-list/active-directory-employee-list.php' ) ) || ( $this->is_multinetwork && !$this->_is_mn_settings_page ) ) {
 					add_action( ( is_network_admin() ? 'network_admin_notices' : 'admin_notices' ), array( $this, 'options_override_message' ) );
 				}
-				wp_enqueue_script( 'ad-employee-list-admin' );
-				wp_enqueue_style( 'ad-employee-list-admin-style' );
+				
+				/**
+				 * Move this out of __construct() in order to avoid deprecated notices
+				 */
+				add_action( 'admin_enqueue_scripts', array( $this, 'admin_enqueue_scripts_and_styles' ) );
 			}
 			
 		} /* __construct() */
+		
+		function admin_enqueue_scripts_and_styles() {
+			wp_enqueue_script( 'ad-employee-list-admin' );
+			wp_enqueue_style( 'ad-employee-list-admin-style' );
+		}
+		
+		function _is_ldap_supported() {
+			return apply_filters( 'adel-is-ldap-supported', function_exists( 'ldap_connect' ) );
+		}
 		
 		/**
 		 * Print an Admin Notice about lack of LDAP Support
@@ -359,16 +371,17 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 		 * Clean up any option settings that need to be cleaned up before saving
 		 */
 		function _sanitize_options( $input ) {
-			$this->_get_options();
+			$opts = $this->_get_options();
 			
 			if( isset( $input['ignore_settings_group'] ) ) {
+				$this->_log( "\n<!-- The option to ignore this settings group was checked -->\n" );
 				$this->_sanitized = true;
 				return false;
 			}
-			$this->_log( "\n<!-- The unsanitized opts look like:\n", $input, "\n and the AD password is: \n", $this->_ad_password, "\n-->\n" );
+			$this->_log( "\n<!-- The unsanitized opts look like:\n", $input, "\n-->\n" );
 			
 			if( $this->_sanitized )
-				return $opts;
+				return $input;
 			
 			$output = array();
 			
@@ -408,17 +421,23 @@ if( !class_exists( 'active_directory_employee_list_admin' ) ) {
 			if( empty( $input['_available_fields'] ) ) {
 				unset( $this->_available_fields );
 				$output['_available_fields'] = $this->get_template_tags( false );
+				$this->_log( "\n<!-- Retrieved global list of available fields -->\n" );
 			} else {
 				$output['_available_fields'] = array();
-				$tmp = explode( "\n", str_replace( "\r", '', $input['_available_fields'] ) );
-				foreach( $tmp as $v ) {
-					$v = explode( '=>', $v );
-					if( is_array( $v ) ) {
-						$output['_available_fields'][trim( array_shift( $v ) )] = trim( implode( '=>', $v ) );
-					} else {
-						$output['_available_fields'][$v] = '';
+				if ( is_array( $input['_available_fields'] ) ) {
+					$output['_available_fields'] = $input['_available_fields'];
+				} else {
+					$tmp = explode( "\n", str_replace( "\r", '', $input['_available_fields'] ) );
+					foreach( $tmp as $v ) {
+						$v = explode( '=>', $v );
+						if( is_array( $v ) ) {
+							$output['_available_fields'][trim( array_shift( $v ) )] = trim( implode( '=>', $v ) );
+						} else {
+							$output['_available_fields'][$v] = '';
+						}
 					}
 				}
+				$this->_log( "\n<!-- Build the list of available fields base on input -->\n", $input['_available_fields'] );
 			}
 			$output['order_by'] 			= empty( $input['order_by'] ) ? null : $input['order_by'];
 			

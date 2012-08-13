@@ -5,6 +5,7 @@ Tags: active directory, ldap, employees, users, directory
 Requires at least: 3.1
 Tested up to: 3.2
 Stable tag: 0.2.1a
+License: GPL2
 
 Retrieve lists of active directory users and display them in WordPress.
 
@@ -79,6 +80,12 @@ To install as a mu-plugin:
 
 == Frequently Asked Questions ==
 
+= Why isn't the plugin doing what it should? =
+
+This is kind of a loaded question. However, the first thing I would suggest is to make sure you're using the latest version of the plugin. If possible, please try the development version of the plugin to make sure that doesn't fix the problem you encountered.
+
+In addition, this plugin relies on a PHP class that's also included in the [Active Directory Authentication Integration plugin](http://wordpress.org/extend/plugins/active-directory-authentication-integration/) (ADAI) and the [Active Directory Integration plugin](http://wordpress.org/extend/plugins/active-directory-integration/). If either of those plugins are installed on your server, especially if they are active, they could be overriding the PHP class definition that this plugin is trying to use. To test things out, please disable/deactivate (and possibly even delete) the ADAI or Active Directory Integration plugin temporarily and see if that fixes the issue. If you are using ADAI, you can update both ADEL and ADAI to the development versions, which should keep the appropriate PHP class in sync.
+
 = How do I use the shortcode? =
 
 The shortcode for this plugin is `[ad-employee-list]`. The shortcode accepts the following arguments:
@@ -87,6 +94,30 @@ The shortcode for this plugin is `[ad-employee-list]`. The shortcode accepts the
 * group - the Active Directory security group or distribution group you'd like to retrieve (if you want to show a list of users)
 * username - the samaccountname of the user you would like to display (if you want to show a specific user). If the username is set, the group will be ignored; and only a single employee will appear.
 * include_search - whether or not to display the search form for the AD list
+* max_results - the maximum number of results that should be retrieved/displayed
+
+= Are there any actions/filters I can use as a developer? =
+
+Yes, there are a handful of actions and filters built into this plugin. Following is a brief list of them.
+
+**Actions**
+
+* `adel_set_ldap_options` - This is an action available in the plugin. This action is run immediately after opening the LDAP connection. Its main purpose is to allow you to set global LDAP options for this connection. The action sends a single parameter (the LDAP object used for the plugin). To set an LDAP option with this action, it is recommended you use the `set_ldap_option()` method within the LDAP object that's sent. For example, to change the maximum number of results retrieved by this plugin, you would use code similar to the following:
+`add_action( 'adel_set_ldap_options', 'my_function_to_set_max_ldap_results' );
+function my_function_to_set_max_ldap_results( $ldap ) {
+	$ldap->set_ldap_option( LDAP_OPT_SIZELIMIT, 100 );
+}`
+
+**Filters**
+
+* `adel-is-ldap-supported` - If you don't have the LDAP extension set up within your PHP configuration, but, for some reason, you still want to be able to test things within this plugin, you can hook into this filter to trick the plugin into thinking you have LDAP set up. Simply hook into this filter and return boolean `true`. This filter basically exists strictly to allow me, as a developer, to test certain aspects of the plugin on my servers that don't have LDAP set up. Obviously, if you don't have LDAP set up within PHP, you won't be able to actually use the plugin, but this filter should at least allow you to configure the settings for the plugin. This filter sends a boolean value to the callback function, and expects a boolean result.
+* `adel_search_results` - If you would like to filter the results of a search (to add information above or below the search results, for instance), you can hook into this filter. This filter acts similarly to the native WordPress `the_content` filter, in that it simply sends HTML as the only parameter, and expects HTML as the return value.
+* `adel-no-results-text` - If you would like to modify the text that's output when no results are returned by the search, you can hook into this filter. This filter sends the original "no results" text ("No employees could be found matching the criteria specified. Please try a different search. If you searched for a person\'s first name and last name together, please try searching for just the first or last name.") and expects text (or HTML) in return.
+* `ad-employee-advanced-search` - If you would like to modify the **advanced** search form in any way, this filter allows you to do that. The filter sends the original HTML for the advanced search form, and expects HTML in return.
+* `ad-employee-simple-search` - If you would like to modify the **simple** search form in any way, this filter allows you to do that. The filter sends the original HTML for the advanced search form, and expects HTML in return.
+* `ad-employee-custom-search` - There is a hidden shortcode you can use within this plugin. The `ad-employee-custom-search` shortcode allows you to output a completely custom search form in a page or post. By default, the `ad-employee-custom-search` shortcode outputs a blank string. However, that blank string is run through the `ad-employee-custom-search` filter before it is returned, so you can hook into that filter to build any kind of search form you want.
+* `adel-simple-presets` - By default, this plugin comes with a handful of presets for the Output format. If you would like to build your own presets, you can hook into this filter to do that. The parameter sent with this filter is an associative array. The keys should be unique for each preset, in order to distinguish which is which. The values for each should be the actual Output Builder template you want to use.
+* `adel-need-to-retrieve` - This filter allows you to add to the list of AD parameters that absolutely must be retrieved when building output.
 
 = Where should I seek support if I find a bug or have a question? =
 
@@ -175,6 +206,8 @@ Unfortunately, there is [a documented issue with PHP](http://bugs.php.net/bug.ph
 * Fixed minor bugs
 * Split widget into 2 separate widgets (one for single employees and a separate one for lists of employees)
 * Added some preset output builder values for widgets
+* Fixed error/warning messages about enqueuing scripts/styles when WP_DEBUG was turned on
+* Added `max_results` parameter to shortcode to override LDAP option
 
 = 0.2.1a =
 
@@ -194,7 +227,7 @@ Unfortunately, there is [a documented issue with PHP](http://bugs.php.net/bug.ph
 
 = 0.3 =
 
-* Multiple bugfixes
+* Major bugfixes (including ability to save options in single WP install)
 
 = 0.2.1a =
 

@@ -291,6 +291,10 @@ if( !class_exists( 'adLDAPE' ) ) {
 		function set_ldap_option( $name, $value ) {
 			ldap_set_option( $this->_conn, $name, $value );
 		}
+		
+		function get_ldap_option( $name, &$rt ) {
+			ldap_get_option( $this->_conn, $name, $rt );
+		}
 	}
 }
 ?>
