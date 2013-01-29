@@ -876,7 +876,9 @@ if( !class_exists( 'active_directory_employee_list_output' ) ) {
 				$keyword = array_fill( 0, count( $field ), $keyword );
 			
 			foreach( $keyword as $k=>$v ) {
-				$keyword[$k] = str_replace( "'", "''", $v );
+				$v = stripslashes( urldecode( $v ) );
+				/*$keyword[$k] = str_replace( "'", "''", $v );*/
+				$keyword[$k] = $v;
 			}
 			
 			if( !is_array( $this->fields_to_show ) )
